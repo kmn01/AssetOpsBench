@@ -2,9 +2,18 @@ import datetime
 import decimal
 from typing import Optional
 
-from sqlalchemy import (Column, Date, DateTime, ForeignKeyConstraint, Identity,
-                        Integer, Numeric, PrimaryKeyConstraint, String,
-                        UniqueConstraint)
+from sqlalchemy import (
+    Column,
+    Date,
+    DateTime,
+    ForeignKeyConstraint,
+    Identity,
+    Integer,
+    Numeric,
+    PrimaryKeyConstraint,
+    String,
+    UniqueConstraint,
+)
 from sqlmodel import Field, Relationship, SQLModel
 
 

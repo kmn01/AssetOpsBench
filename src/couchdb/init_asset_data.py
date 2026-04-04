@@ -92,7 +92,9 @@ def _bulk_insert(db_name: str, docs: list, batch_size: int = 500) -> None:
         resp.raise_for_status()
         errors = [r for r in resp.json() if r.get("error")]
         if errors:
-            logger.warning("%d bulk-insert errors in batch %d", len(errors), i // batch_size)
+            logger.warning(
+                "%d bulk-insert errors in batch %d", len(errors), i // batch_size
+            )
         logger.info(
             "Inserted batch %d/%d (%d docs)",
             i // batch_size + 1,
@@ -107,10 +109,16 @@ def _bulk_insert(db_name: str, docs: list, batch_size: int = 500) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Initialize CouchDB IoT asset database from JSON.")
-    parser.add_argument("--data-file", default=ASSET_DATA_FILE, help="Path to sensor data JSON file")
+    parser = argparse.ArgumentParser(
+        description="Initialize CouchDB IoT asset database from JSON."
+    )
+    parser.add_argument(
+        "--data-file", default=ASSET_DATA_FILE, help="Path to sensor data JSON file"
+    )
     parser.add_argument("--db", default=IOT_DBNAME, help="CouchDB database name")
-    parser.add_argument("--drop", action="store_true", help="Drop and recreate database if it exists")
+    parser.add_argument(
+        "--drop", action="store_true", help="Drop and recreate database if it exists"
+    )
     args = parser.parse_args()
 
     logger.info("CouchDB URL: %s", COUCHDB_URL)
