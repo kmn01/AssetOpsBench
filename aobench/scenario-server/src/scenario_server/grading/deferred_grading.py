@@ -5,7 +5,7 @@ from dataclasses import asdict, dataclass
 from enum import Enum
 
 import asyncpg
-from scenario_server.entities import ScenarioGrade, SubmissionResult
+from scenario_server.entities import SubmissionResult
 from scenario_server.grading.grading import grade_responses
 
 logger: logging.Logger = logging.getLogger(__name__)

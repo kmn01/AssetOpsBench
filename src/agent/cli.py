@@ -27,7 +27,7 @@ def _build_parser() -> argparse.ArgumentParser:
         prog="plan-execute",
         description="Run a question through the MCP plan-execute workflow.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog=f"""
+        epilog="""
 model-id format:
   The provider is encoded in the model-id prefix:
     watsonx/<model>          IBM WatsonX  (e.g. watsonx/meta-llama/llama-3-3-70b-instruct)
@@ -207,6 +207,7 @@ async def _run(args: argparse.Namespace) -> None:
 
 def main() -> None:
     from dotenv import load_dotenv
+
     load_dotenv()
     args = _build_parser().parse_args()
     _setup_logging(args.verbose)

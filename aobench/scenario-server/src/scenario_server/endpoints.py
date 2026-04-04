@@ -122,7 +122,7 @@ async def deferred_grading(
         logger.exception(f"deferred grading storage failed: {e=}")
         raise HTTPException(
             status_code=HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"deferred storage failed",
+            detail="deferred storage failed",
         )
 
     try:

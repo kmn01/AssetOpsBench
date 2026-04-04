@@ -45,7 +45,6 @@ from agent_hive.logger import get_custom_logger
 from agent_hive.agents.wo_agent import WorderOrderAgent
 from agent_hive.workflows.track1_planning import NewPlanningWorkflow
 
-from agent_hive.logger import get_custom_logger
 
 logger = get_custom_logger(__name__)
 
@@ -68,9 +67,7 @@ def load_scenarios(utterance_ids):
     return filtered_df.to_dict(orient="records")
 
 
-def run_planning_workflow(
-        question, qid, llm_model=16, generate_steps_only=False
-):
+def run_planning_workflow(question, qid, llm_model=16, generate_steps_only=False):
     iot_r_agent = ReactReflectAgent(
         name=iot_agent_name,
         description=iot_agent_description,
@@ -100,7 +97,7 @@ def run_planning_workflow(
         task_examples=tsfm_task_examples,
         reflect_step=1,
     )
-    
+
     wo_rr_agent = WorderOrderAgent(
         name=wo_agent_name,
         description=wo_agent_description,
