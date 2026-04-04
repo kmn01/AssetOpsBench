@@ -121,7 +121,9 @@ class Executor:
                 step.task,
             )
             schema = tool_schemas.get(step.server, {}).get(step.tool, "")
-            result = await self.execute_step(step, context, question, tool_schema=schema)
+            result = await self.execute_step(
+                step, context, question, tool_schema=schema
+            )
             if result.success:
                 _log.info("Step %d OK.", step.step_number)
             else:
@@ -210,8 +212,7 @@ async def _resolve_args_with_llm(
         f"Step {n}: {r.response}" for n, r in sorted(context.items())
     )
     prompt = (
-        _ARG_RESOLUTION_PROMPT
-        .replace("{question}", question)
+        _ARG_RESOLUTION_PROMPT.replace("{question}", question)
         .replace("{task}", task)
         .replace("{tool}", tool)
         .replace("{tool_schema}", tool_schema or "(unknown)")
@@ -222,7 +223,8 @@ async def _resolve_args_with_llm(
     if resolved is None:
         _log.warning(
             "Tool '%s': arg resolution returned no parseable JSON (response: %r…)",
-            tool, raw[:120],
+            tool,
+            raw[:120],
         )
         return {}
     return resolved

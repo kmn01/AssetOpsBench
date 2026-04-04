@@ -108,7 +108,7 @@ class AOBTSFMScenarios(ScenarioHandler):
         for entry in submission:
             try:
                 entry_id: str = entry.scenario_id
-            except Exception as e:
+            except Exception:
                 logger.exception(f"missing scenario id: {entry=}")
                 continue
 

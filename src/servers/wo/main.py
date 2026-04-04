@@ -13,7 +13,9 @@ from mcp.server.fastmcp import FastMCP
 
 load_dotenv()
 
-_log_level = getattr(logging, os.environ.get("LOG_LEVEL", "WARNING").upper(), logging.WARNING)
+_log_level = getattr(
+    logging, os.environ.get("LOG_LEVEL", "WARNING").upper(), logging.WARNING
+)
 logging.basicConfig(level=_log_level)
 
 mcp = FastMCP("wo")

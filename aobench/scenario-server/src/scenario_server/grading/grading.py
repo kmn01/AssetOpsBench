@@ -126,8 +126,8 @@ def mlflow_logging(
             # local (to the server) file paths
             results.summary = mlflow_tags + mlflow_log_metrics
 
-        except Exception as e:
-            logger.exception(f"failed to set summary tag")
+        except Exception:
+            logger.exception("failed to set summary tag")
 
     except Exception as e:
         logger.exception(f"mlflow logging failed: {e}")
