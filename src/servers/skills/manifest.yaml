@@ -1,0 +1,11 @@
+skills:
+  - id: pump_seal_inspection
+    version: "1.0.0"
+    description: >
+      High-level workflow that gathers sensors for an asset, failure modes for the
+      asset class/name, and recent work orders for the same equipment id — useful
+      for pump seal and similar mechanical inspections without multiple planner steps.
+    required_servers: [iot, fmsr, wo]
+    asset_types: [centrifugal_pump, pump]
+    keywords: [pump, seal, inspection, mechanical seal, centrifugal]
+    default_enabled: true

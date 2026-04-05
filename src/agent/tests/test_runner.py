@@ -212,6 +212,23 @@ async def test_executor_no_tool_step_skips_llm():
 
 
 @pytest.mark.anyio
+async def test_executor_no_tool_step_ignores_bad_server_name():
+    """Planner sometimes emits #ServerN: none; no-tool steps must not require lookup."""
+    from pathlib import Path
+
+    llm = _CapturingLLM()
+    executor = Executor(llm, server_paths={"iot": Path("/fake/server.py")})
+
+    step = _make_step(1, server="none", tool="none", expected_output="ok")
+    result = await executor.execute_step(step, {}, "Q")
+    assert result.success and result.response == "ok"
+
+    step2 = _make_step(2, server="", tool="none", expected_output="ok2")
+    result2 = await executor.execute_step(step2, {}, "Q")
+    assert result2.success and result2.response == "ok2"
+
+
+@pytest.mark.anyio
 async def test_executor_step_result_carries_resolved_args(sequential_llm):
     """StepResult.tool_args must reflect the args the LLM generated, not {}."""
     from pathlib import Path
