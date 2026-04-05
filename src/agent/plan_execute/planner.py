@@ -24,24 +24,32 @@ they will be resolved at execution time from the task description and prior resu
 Available servers and tools:
 {servers}
 
+Valid #ServerN values — you MUST use exactly one of these names on every step (copy the spelling): {valid_servers}
+Never leave #ServerN blank. Never use "none", "null", or free text as the server name. The word "none" is ONLY valid for #ToolN when no MCP tool is needed.
+
 Output format — one block per step, exactly:
 
 #Task1: <task description>
-#Server1: <exact server name>
+#Server1: <exact server name from the list above>
 #Tool1: <exact tool name, or "none" if no tool call is needed>
 #Dependency1: None
 #ExpectedOutput1: <what this step should produce>
 
 #Task2: <task description>
-#Server2: <exact server name>
+#Server2: <exact server name from the list above>
 #Tool2: <exact tool name>
 #Dependency2: #S1
 #ExpectedOutput2: <what this step should produce>
 
 Rules:
-- Server and tool names must exactly match those listed above.
+- #ServerN must be one of: {valid_servers}
+- #ToolN must exactly match a tool listed under that server, or be the literal none (no quotes in the server line).
 - Dependencies use #S<N> notation (e.g., #S1, #S2). Use "None" if none.
 - Keep tasks specific and actionable.
+- When the question is about pump seal inspection, mechanical seals, or similar
+  pump maintenance flows, and the skills server lists a matching high-level tool
+  (e.g. run_pump_seal_inspection_workflow), prefer a single step on server skills
+  using that tool instead of many separate iot / fmsr / wo steps.
 
 Question: {question}
 
@@ -126,6 +134,11 @@ class Planner:
         servers_text = "\n\n".join(
             f"{name}:\n{desc}" for name, desc in server_descriptions.items()
         )
-        prompt = _PLAN_PROMPT.format(servers=servers_text, question=question)
+        valid_servers = ", ".join(sorted(server_descriptions.keys()))
+        prompt = _PLAN_PROMPT.format(
+            servers=servers_text,
+            question=question,
+            valid_servers=valid_servers,
+        )
         raw = self._llm.generate(prompt)
         return parse_plan(raw)

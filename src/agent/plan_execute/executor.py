@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import re
 from pathlib import Path
 from typing import Any
@@ -20,6 +21,33 @@ _log = logging.getLogger(__name__)
 
 _REPO_ROOT = Path(__file__).parent.parent.parent.parent
 
+# Copied from the parent into MCP stdio children. The MCP client only passes a
+# small default allowlist unless ``env=`` is set; ``plan-execute`` loads
+# ``.env`` into the parent, so these must be forwarded explicitly.
+_MCP_ENV_PREFIXES: tuple[str, ...] = (
+    "WATSONX_",
+    "LITELLM_",
+    "COUCHDB_",
+    "OPENAI_",
+    "ANTHROPIC_",
+)
+_MCP_ENV_NAMES: frozenset[str] = frozenset(
+    {
+        "IOT_DBNAME",
+        "WO_DBNAME",
+        "WO_DATA_DIR",
+        "VIBRATION_DBNAME",
+        "ASSET_DATA_FILE",
+        "LOG_LEVEL",
+        "SKILLS_MODEL_ID",
+        "FMSR_MODEL_ID",
+        "ENABLED_SKILLS",
+        "PATH_TO_MODELS_DIR",
+        "PATH_TO_DATASETS_DIR",
+        "PATH_TO_OUTPUTS_DIR",
+    }
+)
+
 # Maps agent names to either a uv entry-point name (str) or a script Path.
 # Entry-point names are invoked as ``uv run <name>``; Paths fall back to
 # ``python -m module.path`` (supports relative imports).
@@ -30,6 +58,7 @@ DEFAULT_SERVER_PATHS: dict[str, Path | str] = {
     "tsfm": "tsfm-mcp-server",
     "wo": "wo-mcp-server",
     "vibration": "vibration-mcp-server",
+    "skills": "skills-mcp-server",
 }
 
 _PLACEHOLDER_RE = re.compile(r"\{step_(\d+)\}")
@@ -146,6 +175,17 @@ class Executor:
         3. Call the LLM to generate tool arguments from the task and prior results.
         4. Call the tool and return its result.
         """
+        tool_name = (step.tool or "").strip()
+        if not tool_name or tool_name.lower() in ("none", "null"):
+            return StepResult(
+                step_number=step.step_number,
+                task=step.task,
+                server=step.server,
+                response=step.expected_output,
+                tool=step.tool,
+                tool_args=step.tool_args,
+            )
+
         server_path = self._server_paths.get(step.server)
         if server_path is None:
             return StepResult(
@@ -159,23 +199,13 @@ class Executor:
                 ),
             )
 
-        if not step.tool or step.tool.lower() in ("none", "null"):
-            return StepResult(
-                step_number=step.step_number,
-                task=step.task,
-                server=step.server,
-                response=step.expected_output,
-                tool=step.tool,
-                tool_args=step.tool_args,
-            )
-
         try:
             _log.info("Step %d: calling LLM to resolve args.", step.step_number)
             resolved_args = await _resolve_args_with_llm(
-                question, step.task, step.tool, tool_schema, context, self._llm
+                question, step.task, tool_name, tool_schema, context, self._llm
             )
 
-            response = await _call_tool(server_path, step.tool, resolved_args)
+            response = await _call_tool(server_path, tool_name, resolved_args)
             return StepResult(
                 step_number=step.step_number,
                 task=step.task,
@@ -262,6 +292,35 @@ def _parse_json(raw: str) -> dict | None:
 # ── MCP protocol helpers ──────────────────────────────────────────────────────
 
 
+def _forwarded_parent_env() -> dict[str, str]:
+    """Subset of ``os.environ`` needed by MCP server processes."""
+    out: dict[str, str] = {}
+    for key, val in os.environ.items():
+        if key in _MCP_ENV_NAMES or key.startswith(_MCP_ENV_PREFIXES):
+            out[key] = val
+    return out
+
+
+def _mcp_child_env() -> dict[str, str]:
+    """Extra env vars merged (by MCP) with its small inherited allowlist.
+
+    Prepending ``repo/src`` to PYTHONPATH keeps ``import servers`` working when
+    editable-install ``.pth`` files are not processed — notably on macOS if
+    those files carry UF_HIDDEN.
+
+    Application secrets and service settings loaded in the parent (e.g. via
+    ``load_dotenv()`` in ``plan-execute``) are not visible to children unless
+    listed in MCP's minimal allowlist, so we forward a curated subset here.
+    """
+    from mcp.client.stdio import get_default_environment
+
+    env = {**get_default_environment(), **_forwarded_parent_env()}
+    src = str(_REPO_ROOT / "src")
+    prev = env.get("PYTHONPATH") or os.environ.get("PYTHONPATH", "")
+    env["PYTHONPATH"] = src if not prev else f"{src}{os.pathsep}{prev}"
+    return env
+
+
 def _make_stdio_params(server: Path | str) -> "StdioServerParameters":
     """Build StdioServerParameters for a server spec.
 
@@ -276,6 +335,7 @@ def _make_stdio_params(server: Path | str) -> "StdioServerParameters":
             command="uv",
             args=["run", server],
             cwd=str(_REPO_ROOT),
+            env=_mcp_child_env(),
         )
     try:
         rel = server.relative_to(_REPO_ROOT)
@@ -284,9 +344,14 @@ def _make_stdio_params(server: Path | str) -> "StdioServerParameters":
             command="python",
             args=["-m", module],
             cwd=str(_REPO_ROOT),
+            env=_mcp_child_env(),
         )
     except ValueError:
-        return StdioServerParameters(command="python", args=[str(server)])
+        return StdioServerParameters(
+            command="python",
+            args=[str(server)],
+            env=_mcp_child_env(),
+        )
 
 
 async def _list_tools(server_path: Path | str) -> list[dict]:

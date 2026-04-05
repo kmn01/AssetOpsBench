@@ -1,0 +1,7 @@
+# Curated per-asset-type skill labels for get_skills (inheritance server tools).
+chiller:
+  - Inspect compressor
+  - Review refrigerant circuit
+ahu:
+  - Inspect filters
+  - Inspect belts
