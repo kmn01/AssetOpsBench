@@ -63,15 +63,9 @@ def test_workflow_runs_steps_with_mocks():
     fm = FailureModesResult(asset_name="centrifugal pump", failure_modes=["Seal wear"])
 
     with (
-        patch("servers.skills.workflows.sensors", return_value=sens),
-        patch(
-            "servers.skills.workflows.get_failure_modes",
-            return_value=fm,
-        ),
-        patch(
-            "servers.skills.workflows.get_work_orders",
-            return_value=wo_ok,
-        ),
+        patch("servers.iot.main.sensors", return_value=sens),
+        patch("servers.fmsr.main.get_failure_modes", return_value=fm),
+        patch("servers.wo.tools.get_work_orders", return_value=wo_ok),
     ):
         r = run_pump_seal_inspection_workflow("MAIN", "PUMP1", "centrifugal pump")
 
@@ -88,15 +82,12 @@ def test_workflow_marks_iot_failure():
     fm = FailureModesResult(asset_name="pump", failure_modes=["x"])
     with (
         patch(
-            "servers.skills.workflows.sensors",
+            "servers.iot.main.sensors",
             return_value=IoTError(error="no sensors"),
         ),
+        patch("servers.fmsr.main.get_failure_modes", return_value=fm),
         patch(
-            "servers.skills.workflows.get_failure_modes",
-            return_value=fm,
-        ),
-        patch(
-            "servers.skills.workflows.get_work_orders",
+            "servers.wo.tools.get_work_orders",
             return_value=WoError(error="no wo"),
         ),
     ):

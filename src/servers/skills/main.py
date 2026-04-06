@@ -1,10 +1,9 @@
-"""Skills MCP server: marketplace discovery + composed workflows + inheritance tools."""
+"""Skills MCP server: marketplace discovery + composed workflows."""
 
 from __future__ import annotations
 
 import logging
 import os
-from typing import Union
 
 from dotenv import load_dotenv
 
@@ -13,13 +12,6 @@ load_dotenv()
 from mcp.server.fastmcp import FastMCP
 from pydantic import BaseModel, Field
 
-from .inheritance import (
-    InheritanceError,
-    SkillInheritanceLineageResult,
-    SkillsForAssetResult,
-    get_skill_inheritance_for_skill,
-    get_skills_for_asset,
-)
 from .registry import (
     MarketplaceError,
     SkillManifestResponse,
@@ -54,7 +46,7 @@ def list_skills() -> ListSkillsResult:
 
 
 @mcp.tool()
-def get_skill_manifest(skill_id: str) -> Union[SkillManifestResponse, MarketplaceError]:
+def get_skill_manifest(skill_id: str) -> SkillManifestResponse | MarketplaceError:
     """Return full metadata for one skill (required MCP servers, asset types, keywords)."""
     return get_manifest_for_skill(skill_id.strip())
 
@@ -64,24 +56,9 @@ def run_pump_seal_inspection_workflow(
     site_name: str,
     asset_id: str,
     asset_name: str,
-) -> Union[PumpSealInspectionWorkflowResult, WorkflowError]:
+) -> PumpSealInspectionWorkflowResult | WorkflowError:
     """Composed workflow: IoT sensors + FMSR failure modes + work orders for one asset."""
     return _run_pump_seal_inspection_workflow(site_name, asset_id, asset_name)
-
-
-@mcp.tool()
-def get_skills(asset_name: str) -> Union[SkillsForAssetResult, InheritanceError]:
-    """Returns curated or LLM-derived skill labels for an asset type/name (legacy tool)."""
-    return get_skills_for_asset(asset_name)
-
-
-@mcp.tool()
-def get_skill_inheritance(
-    asset_name: str,
-    skill_name: str,
-) -> Union[SkillInheritanceLineageResult, InheritanceError]:
-    """Returns parent skills the given skill inherits from (LLM, legacy tool)."""
-    return get_skill_inheritance_for_skill(asset_name, skill_name)
 
 
 def main():

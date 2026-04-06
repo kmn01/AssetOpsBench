@@ -39,7 +39,6 @@ _MCP_ENV_NAMES: frozenset[str] = frozenset(
         "VIBRATION_DBNAME",
         "ASSET_DATA_FILE",
         "LOG_LEVEL",
-        "SKILLS_MODEL_ID",
         "FMSR_MODEL_ID",
         "ENABLED_SKILLS",
         "PATH_TO_MODELS_DIR",
