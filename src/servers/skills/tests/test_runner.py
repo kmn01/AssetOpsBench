@@ -1,0 +1,146 @@
+import json
+
+import pytest
+
+from servers.skills.runner import run_skill_impl
+from servers.skills.sibling_mcp import set_sibling_pool_for_testing
+
+from .fake_sibling import FakeSiblingMCPPool
+
+
+@pytest.mark.anyio
+async def test_pump_skill_validates_required_arguments(tmp_path, monkeypatch):
+    p = tmp_path / "st.json"
+    p.write_text(
+        json.dumps({"installed": ["assetopsbench/pump_seal_inspection"]}),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("SKILL_INSTALL_STATE_PATH", str(p))
+    set_sibling_pool_for_testing(FakeSiblingMCPPool({}))
+    r = await run_skill_impl(
+        "assetopsbench/pump_seal_inspection",
+        {"site_name": "", "asset_id": "a", "asset_name": "b"},
+    )
+    assert r.model_dump().get("error")
+
+
+@pytest.mark.anyio
+async def test_not_runnable_when_uninstalled(tmp_path, monkeypatch):
+    p = tmp_path / "st.json"
+    p.write_text(json.dumps({"installed": []}), encoding="utf-8")
+    monkeypatch.setenv("SKILL_INSTALL_STATE_PATH", str(p))
+    r = await run_skill_impl(
+        "assetopsbench/pump_seal_inspection",
+        {
+            "site_name": "MAIN",
+            "asset_id": "P1",
+            "asset_name": "pump",
+        },
+    )
+    data = r.model_dump()
+    assert "not installed" in data.get("error", "").lower()
+
+
+@pytest.mark.anyio
+async def test_diagnostics_skill_with_fake_mcp(tmp_path, monkeypatch):
+    p = tmp_path / "st.json"
+    p.write_text(
+        json.dumps({"installed": ["assetopsbench_demo/asset_diagnostics_bundle"]}),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("SKILL_INSTALL_STATE_PATH", str(p))
+    mapping = {
+        ("iot", "sensors"): {
+            "site_name": "MAIN",
+            "asset_id": "P1",
+            "total_sensors": 2,
+            "sensors": ["A", "B"],
+            "message": "ok",
+        },
+        ("fmsr", "get_failure_modes"): {
+            "asset_name": "chiller",
+            "failure_modes": ["Leak"],
+        },
+        (
+            "fmsr",
+            "get_failure_mode_sensor_mapping",
+        ): {
+            "metadata": {},
+            "fm2sensor": {},
+            "sensor2fm": {},
+            "full_relevancy": [],
+        },
+    }
+    set_sibling_pool_for_testing(FakeSiblingMCPPool(mapping))
+    r = await run_skill_impl(
+        "assetopsbench_demo/asset_diagnostics_bundle",
+        {
+            "site_name": "MAIN",
+            "asset_id": "P1",
+            "asset_name": "chiller",
+        },
+    )
+    d = r.model_dump()
+    assert d["overall_ok"] is True
+    assert len(d["steps"]) == 3
+
+
+@pytest.mark.anyio
+async def test_safety_clearance_fail_when_no_sensors(tmp_path, monkeypatch):
+    p = tmp_path / "st.json"
+    p.write_text(
+        json.dumps({"installed": ["assetopsbench_demo/safety_clearance_check"]}),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("SKILL_INSTALL_STATE_PATH", str(p))
+    mapping = {
+        ("iot", "sensors"): {
+            "error": "no sensors",
+        },
+        ("wo", "get_work_orders"): {
+            "equipment_id": "P1",
+            "total": 0,
+            "work_orders": [],
+            "message": "none",
+        },
+    }
+    set_sibling_pool_for_testing(FakeSiblingMCPPool(mapping))
+    r = await run_skill_impl(
+        "assetopsbench_demo/safety_clearance_check",
+        {"site_name": "MAIN", "asset_id": "P1"},
+    )
+    assert r.model_dump()["overall_ok"] is False
+
+
+@pytest.mark.anyio
+async def test_safety_clearance_accepts_site_and_asset_aliases(tmp_path, monkeypatch):
+    """Plan-execute LLM often emits ``site`` / ``asset`` instead of canonical keys."""
+    p = tmp_path / "st.json"
+    p.write_text(
+        json.dumps({"installed": ["assetopsbench_demo/safety_clearance_check"]}),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("SKILL_INSTALL_STATE_PATH", str(p))
+    mapping = {
+        ("iot", "sensors"): {
+            "site_name": "MAIN",
+            "asset_id": "P1",
+            "total_sensors": 1,
+            "sensors": ["A"],
+            "message": "ok",
+        },
+        ("wo", "get_work_orders"): {
+            "equipment_id": "P1",
+            "total": 1,
+            "work_orders": [],
+            "message": "ok",
+        },
+    }
+    set_sibling_pool_for_testing(FakeSiblingMCPPool(mapping))
+    r = await run_skill_impl(
+        "assetopsbench_demo/safety_clearance_check",
+        {"site": "MAIN", "asset": "P1"},
+    )
+    d = r.model_dump()
+    assert "error" not in d
+    assert d["overall_ok"] is True
