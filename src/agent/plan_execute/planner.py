@@ -26,6 +26,7 @@ Available servers and tools:
 
 Valid #ServerN values — you MUST use exactly one of these names on every step (copy the spelling): {valid_servers}
 Never leave #ServerN blank. Never use "none", "null", or free text as the server name. The word "none" is ONLY valid for #ToolN when no MCP tool is needed.
+Only use the ``skills`` server if it appears in the available servers list above.
 
 Output format — one block per step, exactly:
 
@@ -46,14 +47,27 @@ Rules:
 - #ToolN must exactly match a tool listed under that server, or be the literal none (no quotes in the server line).
 - Dependencies use #S<N> notation (e.g., #S1, #S2). Use "None" if none.
 - Keep tasks specific and actionable.
-- When the question is about pump seal inspection, mechanical seals, or similar
-  pump maintenance flows, and the skills server lists a matching high-level tool
-  (e.g. run_pump_seal_inspection_workflow), prefer a single step on server skills
-  using that tool instead of many separate iot / fmsr / wo steps.
-
+{skills_rule}
 Question: {question}
 
 Plan:
+"""
+
+_SKILLS_SERVER_RULES = """\
+- On server ``skills``, tool ``run_skill`` takes JSON arguments ``skill_id`` and
+  ``arguments`` (object). ``skill_id`` MUST be the **full FQID** exactly as in
+  the skills list: ``pack_id/skill_id`` (e.g. ``assetopsbench_demo/safety_clearance_check``).
+  Never pass only the short suffix (e.g. ``safety_clearance_check`` alone).
+- Pump seal / mechanical seal maintenance:
+  ``skill_id`` ``assetopsbench/pump_seal_inspection``;
+  ``arguments``: ``site_name``, ``asset_id``, ``asset_name``.
+- Safety clearance / readiness checks:
+  ``skill_id`` ``assetopsbench_demo/safety_clearance_check``;
+  ``arguments``: ``site_name``, ``asset_id``.
+- Diagnostics / failure-mode sensor mapping bundle:
+  ``skill_id`` ``assetopsbench_demo/asset_diagnostics_bundle``;
+  ``arguments``: ``site_name``, ``asset_id``, ``asset_name``.
+- If ``skills`` is not in the server list, use iot / fmsr / wo as needed instead.
 """
 
 _TASK_RE = re.compile(r"#Task(\d+):\s*(.+)")
@@ -135,10 +149,14 @@ class Planner:
             f"{name}:\n{desc}" for name, desc in server_descriptions.items()
         )
         valid_servers = ", ".join(sorted(server_descriptions.keys()))
+        skills_rule = (
+            _SKILLS_SERVER_RULES if "skills" in server_descriptions else ""
+        )
         prompt = _PLAN_PROMPT.format(
             servers=servers_text,
             question=question,
             valid_servers=valid_servers,
+            skills_rule=skills_rule,
         )
         raw = self._llm.generate(prompt)
         return parse_plan(raw)

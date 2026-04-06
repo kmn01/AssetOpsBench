@@ -7,6 +7,7 @@ dict from the task description, original question, and prior step results.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import os
@@ -15,37 +16,15 @@ from pathlib import Path
 from typing import Any
 
 from llm import LLMBackend
+from servers.common.mcp_stdio import make_stdio_params
+
 from .models import Plan, PlanStep, StepResult
 
 _log = logging.getLogger(__name__)
 
 _REPO_ROOT = Path(__file__).parent.parent.parent.parent
 
-# Copied from the parent into MCP stdio children. The MCP client only passes a
-# small default allowlist unless ``env=`` is set; ``plan-execute`` loads
-# ``.env`` into the parent, so these must be forwarded explicitly.
-_MCP_ENV_PREFIXES: tuple[str, ...] = (
-    "WATSONX_",
-    "LITELLM_",
-    "COUCHDB_",
-    "OPENAI_",
-    "ANTHROPIC_",
-)
-_MCP_ENV_NAMES: frozenset[str] = frozenset(
-    {
-        "IOT_DBNAME",
-        "WO_DBNAME",
-        "WO_DATA_DIR",
-        "VIBRATION_DBNAME",
-        "ASSET_DATA_FILE",
-        "LOG_LEVEL",
-        "FMSR_MODEL_ID",
-        "ENABLED_SKILLS",
-        "PATH_TO_MODELS_DIR",
-        "PATH_TO_DATASETS_DIR",
-        "PATH_TO_OUTPUTS_DIR",
-    }
-)
+_MCP_CLIENT_TIMEOUT_SEC = float(os.environ.get("MCP_CLIENT_TIMEOUT_SEC", "300"))
 
 # Maps agent names to either a uv entry-point name (str) or a script Path.
 # Entry-point names are invoked as ``uv run <name>``; Paths fall back to
@@ -99,6 +78,7 @@ class Executor:
         """Query each registered MCP server and return formatted tool signatures."""
         descriptions: dict[str, str] = {}
         for name, path in self._server_paths.items():
+            _log.info("Listing tools from server %r ...", name)
             try:
                 tools = await _list_tools(path)
                 lines = []
@@ -181,7 +161,7 @@ class Executor:
                 task=step.task,
                 server=step.server,
                 response=step.expected_output,
-                tool=step.tool,
+                tool=tool_name,
                 tool_args=step.tool_args,
             )
 
@@ -210,7 +190,7 @@ class Executor:
                 task=step.task,
                 server=step.server,
                 response=response,
-                tool=step.tool,
+                tool=tool_name,
                 tool_args=resolved_args,
             )
         except Exception as exc:  # noqa: BLE001
@@ -220,7 +200,7 @@ class Executor:
                 server=step.server,
                 response="",
                 error=str(exc),
-                tool=step.tool,
+                tool=tool_name,
                 tool_args=step.tool_args,
             )
 
@@ -291,99 +271,47 @@ def _parse_json(raw: str) -> dict | None:
 # ── MCP protocol helpers ──────────────────────────────────────────────────────
 
 
-def _forwarded_parent_env() -> dict[str, str]:
-    """Subset of ``os.environ`` needed by MCP server processes."""
-    out: dict[str, str] = {}
-    for key, val in os.environ.items():
-        if key in _MCP_ENV_NAMES or key.startswith(_MCP_ENV_PREFIXES):
-            out[key] = val
-    return out
-
-
-def _mcp_child_env() -> dict[str, str]:
-    """Extra env vars merged (by MCP) with its small inherited allowlist.
-
-    Prepending ``repo/src`` to PYTHONPATH keeps ``import servers`` working when
-    editable-install ``.pth`` files are not processed — notably on macOS if
-    those files carry UF_HIDDEN.
-
-    Application secrets and service settings loaded in the parent (e.g. via
-    ``load_dotenv()`` in ``plan-execute``) are not visible to children unless
-    listed in MCP's minimal allowlist, so we forward a curated subset here.
-    """
-    from mcp.client.stdio import get_default_environment
-
-    env = {**get_default_environment(), **_forwarded_parent_env()}
-    src = str(_REPO_ROOT / "src")
-    prev = env.get("PYTHONPATH") or os.environ.get("PYTHONPATH", "")
-    env["PYTHONPATH"] = src if not prev else f"{src}{os.pathsep}{prev}"
-    return env
-
-
-def _make_stdio_params(server: Path | str) -> "StdioServerParameters":
-    """Build StdioServerParameters for a server spec.
-
-    - str  → entry-point name; invoked as ``uv run <name>`` from the repo root.
-    - Path → invoked as ``python -m module.path`` when under the repo root
-             (supports relative imports), or directly otherwise.
-    """
-    from mcp import StdioServerParameters
-
-    if isinstance(server, str):
-        return StdioServerParameters(
-            command="uv",
-            args=["run", server],
-            cwd=str(_REPO_ROOT),
-            env=_mcp_child_env(),
-        )
-    try:
-        rel = server.relative_to(_REPO_ROOT)
-        module = str(rel.with_suffix("")).replace("/", ".").replace("\\", ".")
-        return StdioServerParameters(
-            command="python",
-            args=["-m", module],
-            cwd=str(_REPO_ROOT),
-            env=_mcp_child_env(),
-        )
-    except ValueError:
-        return StdioServerParameters(
-            command="python",
-            args=[str(server)],
-            env=_mcp_child_env(),
-        )
-
-
 async def _list_tools(server_path: Path | str) -> list[dict]:
     """Connect to an MCP server via stdio and list its tools with parameter info."""
     from mcp import ClientSession
     from mcp.client.stdio import stdio_client
 
-    params = _make_stdio_params(server_path)
-    async with stdio_client(params) as (read, write):
-        async with ClientSession(read, write) as session:
-            await session.initialize()
-            result = await session.list_tools()
-            tools = []
-            for t in result.tools:
-                schema = t.inputSchema or {}
-                props = schema.get("properties", {})
-                required = set(schema.get("required", []))
-                parameters = [
-                    {
-                        "name": k,
-                        "type": v.get("type", "any"),
-                        "required": k in required,
-                    }
-                    for k, v in props.items()
-                ]
-                tools.append(
-                    {
-                        "name": t.name,
-                        "description": t.description or "",
-                        "parameters": parameters,
-                    }
-                )
-            return tools
+    params = make_stdio_params(server_path, repo_root=_REPO_ROOT)
+
+    async def _run() -> list[dict]:
+        async with stdio_client(params) as (read, write):
+            async with ClientSession(read, write) as session:
+                await session.initialize()
+                result = await session.list_tools()
+                tools = []
+                for t in result.tools:
+                    schema = t.inputSchema or {}
+                    props = schema.get("properties", {})
+                    required = set(schema.get("required", []))
+                    parameters = [
+                        {
+                            "name": k,
+                            "type": v.get("type", "any"),
+                            "required": k in required,
+                        }
+                        for k, v in props.items()
+                    ]
+                    tools.append(
+                        {
+                            "name": t.name,
+                            "description": t.description or "",
+                            "parameters": parameters,
+                        }
+                    )
+                return tools
+
+    try:
+        return await asyncio.wait_for(_run(), timeout=_MCP_CLIENT_TIMEOUT_SEC)
+    except TimeoutError as exc:
+        raise TimeoutError(
+            f"MCP list_tools exceeded {_MCP_CLIENT_TIMEOUT_SEC}s "
+            f"(server {server_path!r}); increase MCP_CLIENT_TIMEOUT_SEC or fix the server"
+        ) from exc
 
 
 async def _call_tool(server_path: Path | str, tool_name: str, args: dict) -> str:
@@ -391,12 +319,22 @@ async def _call_tool(server_path: Path | str, tool_name: str, args: dict) -> str
     from mcp import ClientSession
     from mcp.client.stdio import stdio_client
 
-    params = _make_stdio_params(server_path)
-    async with stdio_client(params) as (read, write):
-        async with ClientSession(read, write) as session:
-            await session.initialize()
-            result = await session.call_tool(tool_name, args)
-            return _extract_content(result.content)
+    params = make_stdio_params(server_path, repo_root=_REPO_ROOT)
+
+    async def _run() -> str:
+        async with stdio_client(params) as (read, write):
+            async with ClientSession(read, write) as session:
+                await session.initialize()
+                result = await session.call_tool(tool_name, args)
+                return _extract_content(result.content)
+
+    try:
+        return await asyncio.wait_for(_run(), timeout=_MCP_CLIENT_TIMEOUT_SEC)
+    except TimeoutError as exc:
+        raise TimeoutError(
+            f"MCP call_tool({tool_name!r}) exceeded {_MCP_CLIENT_TIMEOUT_SEC}s "
+            f"(server {server_path!r}); increase MCP_CLIENT_TIMEOUT_SEC or fix the server"
+        ) from exc
 
 
 def _extract_content(content: list[Any]) -> str:
