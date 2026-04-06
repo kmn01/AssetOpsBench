@@ -44,7 +44,7 @@ environment variables:
   LOG_LEVEL             Log level for MCP servers (default: WARNING)
 
   MCP_CLIENT_TIMEOUT_SEC  Max seconds for each MCP connect / list_tools / call_tool
-                          in plan-execute (default: 300). Raises TimeoutError if exceeded.
+                          in plan-execute (default in code: 600). Raises TimeoutError if exceeded.
 
 examples:
   plan-execute "What assets are at site MAIN?"

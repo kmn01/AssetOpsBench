@@ -30,6 +30,15 @@ class TestGetFailureModes:
         assert len(data["failure_modes"]) == 7
 
     @pytest.mark.anyio
+    async def test_centrifugal_pump_returns_hardcoded(self):
+        """Avoids LLM round-trip for pump diagnostics / pump seal skill demos."""
+        data = await call_tool(
+            mcp, "get_failure_modes", {"asset_name": "centrifugal pump"}
+        )
+        assert "failure_modes" in data
+        assert any("Seal" in fm for fm in data["failure_modes"])
+
+    @pytest.mark.anyio
     async def test_ahu_returns_hardcoded(self):
         data = await call_tool(mcp, "get_failure_modes", {"asset_name": "ahu"})
         assert "failure_modes" in data

@@ -730,7 +730,7 @@ Using the same **`cwd`** as the repo root lets `python-dotenv` load your **`.env
 
 **Windows note:** In JSON strings, escape backslashes in paths (for example `"C:\\Users\\you\\AssetOpsBench"`) or use forward slashes if your toolchain accepts them (`"C:/Users/you/AssetOpsBench"`).
 
-Omit **`skills`** if you do not need the [skills MCP server](Skills_MCP_Server_Guide.md). Omit **`tsfm`** or **`vibration`** if you want a smaller tool surface (some tools may log expected “optional dependency” warnings).
+Omit **`skills`** if you do not need the [skills MCP server](Skills_MCP_Server_Documentation.md). Omit **`tsfm`** or **`vibration`** if you want a smaller tool surface (some tools may log expected “optional dependency” warnings).
 
 This mirrors the layout in [`INSTRUCTIONS.md`](../INSTRUCTIONS.md) (“Connect to Claude Desktop”), with **`cwd`** added so `.env` is found.
 

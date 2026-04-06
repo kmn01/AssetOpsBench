@@ -20,6 +20,7 @@ MCP_ENV_EXACT: frozenset[str] = frozenset(
         "ASSET_DATA_FILE",
         "LOG_LEVEL",
         "FMSR_MODEL_ID",
+        "LLM_HTTP_TIMEOUT_SEC",
         "ENABLED_SKILLS",
         "PATH_TO_MODELS_DIR",
         "PATH_TO_DATASETS_DIR",

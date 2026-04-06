@@ -25,6 +25,44 @@ async def test_pump_skill_validates_required_arguments(tmp_path, monkeypatch):
 
 
 @pytest.mark.anyio
+async def test_pump_skill_defaults_asset_name_from_asset_id(tmp_path, monkeypatch):
+    """Single equipment token (plan-execute often supplies only asset_id)."""
+    p = tmp_path / "st.json"
+    p.write_text(
+        json.dumps({"installed": ["assetopsbench/pump_seal_inspection"]}),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("SKILL_INSTALL_STATE_PATH", str(p))
+    mapping = {
+        ("iot", "sensors"): {
+            "site_name": "MAIN",
+            "asset_id": "PUMP1",
+            "total_sensors": 1,
+            "sensors": ["Vibration"],
+            "message": "ok",
+        },
+        ("fmsr", "get_failure_modes"): {
+            "asset_name": "PUMP1",
+            "failure_modes": [],
+        },
+        ("wo", "get_work_orders"): {
+            "equipment_id": "PUMP1",
+            "total": 0,
+            "work_orders": [],
+            "message": "ok",
+        },
+    }
+    set_sibling_pool_for_testing(FakeSiblingMCPPool(mapping))
+    r = await run_skill_impl(
+        "assetopsbench/pump_seal_inspection",
+        {"site_name": "MAIN", "asset_id": "PUMP1"},
+    )
+    d = r.model_dump()
+    assert "error" not in d
+    assert d["overall_ok"] is True
+
+
+@pytest.mark.anyio
 async def test_not_runnable_when_uninstalled(tmp_path, monkeypatch):
     p = tmp_path / "st.json"
     p.write_text(json.dumps({"installed": []}), encoding="utf-8")

@@ -7,6 +7,13 @@ chiller:
   - "Purge Unit Excessive purge"
   - "Refrigerant Operated Control Valve Failed spring"
 
+centrifugal pump:
+  - "Seal Failure"
+  - "Bearing Failure"
+  - "Cavitation"
+  - "Impeller Wear"
+  - "Misalignment"
+
 ahu:
   - "Pressure Regulators Diaphragm failure"
   - "Steam Heating Coils Air side fouling"

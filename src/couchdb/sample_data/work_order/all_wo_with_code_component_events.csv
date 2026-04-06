@@ -4248,3 +4248,6 @@ WO166916,Oil Analysis and more specific Routine Oil Analysis related to compress
 WO167258,Lubrication and more specific Lubrication of Bearings related to compressor,compressor,MT003,Lubrication,MT003a,Lubrication of Bearings,CWC04010,Chiller 10,FALSE,1,9/25/23 13:00,1:00,6:00
 WO168191,Refrigerant Addition and more specific Small Amount related to refrigerant circuit,refrigerant circuit,MT004,Refrigerant Addition,MT004a,Small Amount,CWC04010,Chiller 10,TRUE,5,10/12/23 14:30,1:15,1:00
 WO169992,Lubrication and more specific Lubrication of Bearings related to compressor,compressor,MT003,Lubrication,MT003a,Lubrication of Bearings,CWC04006,Chiller 6,FALSE,1,10/6/23 11:00,1:00,4:00
+WO_PUMP_DEMO01,Seal inspection and minor adjustment related to mechanical seal,mechanical seal,MT050,Seal Service,MT050a,Visual Seal Inspection,PUMP1,centrifugal pump,TRUE,5,1/15/24 10:00,2:00,0.50
+WO_PUMP_DEMO02,Routine pump maintenance and bearing lubrication,bearing assembly,MT001,Routine Maintenance,MT001a,Scheduled Maintenance,PUMP1,centrifugal pump,TRUE,5,2/10/24 9:00,3:00,1.00
+WO_PUMP_DEMO03,Alignment check following seal service,drive train,MT002,Alignment,MT002a,Coupling Alignment,PUMP1,centrifugal pump,FALSE,3,3/22/24 14:30,4:00,2.00
