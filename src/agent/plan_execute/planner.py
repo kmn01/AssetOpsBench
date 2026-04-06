@@ -60,7 +60,7 @@ _SKILLS_SERVER_RULES = """\
   Never pass only the short suffix (e.g. ``safety_clearance_check`` alone).
 - Pump seal / mechanical seal maintenance:
   ``skill_id`` ``assetopsbench/pump_seal_inspection``;
-  ``arguments``: ``site_name``, ``asset_id``, ``asset_name``.
+  ``arguments``: ``site_name``, ``asset_id``, ``asset_name`` (if only one tag like PUMP1 is known, use it for both ``asset_id`` and ``asset_name``).
 - Safety clearance / readiness checks:
   ``skill_id`` ``assetopsbench_demo/safety_clearance_check``;
   ``arguments``: ``site_name``, ``asset_id``.

@@ -45,6 +45,7 @@ async def test_aclose_exits_session_then_stdio(tmp_path) -> None:
         await pool.call_tool("iot", "any_tool", {})
         await pool.aclose()
 
+    # Teardown happens inside call_tool (same task as __aenter__); aclose is a no-op.
     assert order == ["session", "stdio"]
     sess_cm.__aexit__.assert_awaited_once()
     stdio_cm.__aexit__.assert_awaited_once()

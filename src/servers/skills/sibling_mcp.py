@@ -1,20 +1,23 @@
-"""Lazy-reused stdio MCP clients for sibling servers (iot, fmsr, wo, ...)."""
+"""Stdio MCP clients to sibling servers (iot, fmsr, wo, ...).
+
+Each :meth:`SiblingMCPPool.call_tool` opens a short-lived stdio transport and closes
+it in the **same** asyncio task. Reusing sessions across tasks was unsafe: parallel
+``asyncio.gather`` entered ``stdio_client`` in worker tasks while ``aclose`` exited
+from the parent task, triggering AnyIO "cancel scope in a different task" errors.
+"""
 
 from __future__ import annotations
 
 import asyncio
-import json
-import logging
 import os
-import sys
 from pathlib import Path
 from typing import Any
+
+import anyio
 
 from servers.common.mcp_stdio import make_stdio_params
 
 from .registry import repo_root
-
-_log = logging.getLogger(__name__)
 
 _TEST_POOL: Any | None = None
 
@@ -58,7 +61,7 @@ def _extract_content(content: Any) -> str:
 
 
 class SiblingMCPPool:
-    """One long-lived stdio MCP session per logical server name."""
+    """Serialize calls per server and run each RPC in a one-shot stdio client."""
 
     def __init__(
         self,
@@ -71,9 +74,6 @@ class SiblingMCPPool:
         self._command_map = command_map
         self._timeout_sec = timeout_sec
         self._locks: dict[str, asyncio.Lock] = {}
-        self._stdio_acm: dict[str, Any] = {}
-        self._session_acm: dict[str, Any] = {}
-        self._sessions: dict[str, Any] = {}
         self._closed = False
 
     @classmethod
@@ -84,67 +84,9 @@ class SiblingMCPPool:
             timeout_sec=float(os.environ.get("SKILL_MCP_CALL_TIMEOUT_SEC", "120")),
         )
 
-    async def _ensure_session(self, server_name: str):
-        from mcp import ClientSession
-        from mcp.client.stdio import stdio_client
-
-        if self._closed:
-            raise RuntimeError("SiblingMCPPool is closed")
-        if server_name in self._sessions:
-            return self._sessions[server_name]
-        spec = self._command_map.get(server_name)
-        if spec is None:
-            raise ValueError(
-                f"unknown sibling server {server_name!r}; extend SKILL_SIBLING_COMMANDS"
-            )
-        params = make_stdio_params(spec, repo_root=self._project_root)
-        stdio_cm = stdio_client(params)
-        read_write = await stdio_cm.__aenter__()
-        try:
-            read, write = read_write
-            sess_cm = ClientSession(read, write)
-            session = await sess_cm.__aenter__()
-            try:
-                await session.initialize()
-            except BaseException:
-                await sess_cm.__aexit__(*sys.exc_info())
-                raise
-        except BaseException:
-            await stdio_cm.__aexit__(*sys.exc_info())
-            raise
-        self._stdio_acm[server_name] = stdio_cm
-        self._session_acm[server_name] = sess_cm
-        self._sessions[server_name] = session
-        _log.info("Sibling MCP session ready for %s", server_name)
-        return session
-
     async def aclose(self) -> None:
-        """Exit all stored stdio and session context managers (inner session first)."""
-        if self._closed:
-            return
+        """Mark the pool closed (no persistent stdio sessions to drain)."""
         self._closed = True
-        names = list(self._sessions.keys())
-        for name in names:
-            lock = self._locks.setdefault(name, asyncio.Lock())
-            async with lock:
-                sess_cm = self._session_acm.pop(name, None)
-                stdio_cm = self._stdio_acm.pop(name, None)
-                self._sessions.pop(name, None)
-                errors: list[BaseException] = []
-                if sess_cm is not None:
-                    try:
-                        await sess_cm.__aexit__(None, None, None)
-                    except BaseException as e:
-                        errors.append(e)
-                if stdio_cm is not None:
-                    try:
-                        await stdio_cm.__aexit__(None, None, None)
-                    except BaseException as e:
-                        errors.append(e)
-                if errors:
-                    if len(errors) == 1:
-                        raise errors[0]
-                    raise ExceptionGroup("SiblingMCPPool.aclose", errors)
 
     async def __aenter__(self) -> SiblingMCPPool:
         return self
@@ -158,14 +100,28 @@ class SiblingMCPPool:
         tool_name: str,
         arguments: dict[str, Any],
     ) -> str:
+        if self._closed:
+            raise RuntimeError("SiblingMCPPool is closed")
+        spec = self._command_map.get(server_name)
+        if spec is None:
+            raise ValueError(
+                f"unknown sibling server {server_name!r}; extend SKILL_SIBLING_COMMANDS"
+            )
+        params = make_stdio_params(spec, repo_root=self._project_root)
         lock = self._locks.setdefault(server_name, asyncio.Lock())
         async with lock:
-            session = await self._ensure_session(server_name)
-            result = await asyncio.wait_for(
-                session.call_tool(tool_name, arguments),
-                timeout=self._timeout_sec,
-            )
-            return _extract_content(getattr(result, "content", None))
+            from mcp import ClientSession
+            from mcp.client.stdio import stdio_client
+
+            async def _run() -> str:
+                async with stdio_client(params) as (read, write):
+                    async with ClientSession(read, write) as session:
+                        await session.initialize()
+                        result = await session.call_tool(tool_name, arguments)
+                        return _extract_content(getattr(result, "content", None))
+
+            with anyio.fail_after(self._timeout_sec):
+                return await _run()
 
 
 def get_sibling_pool() -> SiblingMCPPool:

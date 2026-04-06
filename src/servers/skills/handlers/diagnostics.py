@@ -2,11 +2,19 @@
 
 from __future__ import annotations
 
+import asyncio
+
 from pydantic import BaseModel
 
 from ..results import SkillRunResult
 from ._aliases import asset_id_field, asset_name_field, site_name_field
 from ._util import mcp_step
+
+# Cap mapping grid: FMSR runs one LLM call per (failure_mode × sensor) sequentially.
+# 5×10 pairs can exceed plan-execute MCP_CLIENT_TIMEOUT_SEC (formerly ~25–50 calls
+# × several seconds each).
+_MAX_FM_FOR_MAPPING = 3
+_MAX_SENSORS_FOR_MAPPING = 4
 
 
 class DiagnosticsArgs(BaseModel):
@@ -21,34 +29,32 @@ async def run_asset_diagnostics_bundle(pool, arguments: dict) -> SkillRunResult:
     aid = args.asset_id.strip()
     aname = args.asset_name.strip()
 
-    steps: list = []
-    steps.append(
-        await mcp_step(
+    iot_s, fmsr_fm = await asyncio.gather(
+        mcp_step(
             pool,
             name="iot_sensors",
             server="iot",
             tool="sensors",
             arguments={"site_name": site, "asset_id": aid},
-        )
-    )
-    steps.append(
-        await mcp_step(
+        ),
+        mcp_step(
             pool,
             name="fmsr_failure_modes",
             server="fmsr",
             tool="get_failure_modes",
             arguments={"asset_name": aname},
-        )
+        ),
     )
+    steps = [iot_s, fmsr_fm]
 
     failure_modes: list = []
     sensors_list: list = []
-    if steps[1].ok:
-        failure_modes = steps[1].detail.get("failure_modes") or []
+    if fmsr_fm.ok:
+        failure_modes = fmsr_fm.detail.get("failure_modes") or []
         if not isinstance(failure_modes, list):
             failure_modes = []
-    if steps[0].ok:
-        sensors_list = steps[0].detail.get("sensors") or []
+    if iot_s.ok:
+        sensors_list = iot_s.detail.get("sensors") or []
         if not isinstance(sensors_list, list):
             sensors_list = []
 
@@ -60,8 +66,8 @@ async def run_asset_diagnostics_bundle(pool, arguments: dict) -> SkillRunResult:
             tool="get_failure_mode_sensor_mapping",
             arguments={
                 "asset_name": aname,
-                "failure_modes": failure_modes[:5],
-                "sensors": sensors_list[:10],
+                "failure_modes": failure_modes[:_MAX_FM_FOR_MAPPING],
+                "sensors": sensors_list[:_MAX_SENSORS_FOR_MAPPING],
             },
         )
     )

@@ -1,0 +1,29 @@
+[
+  {
+    "asset_id": "PUMP1",
+    "timestamp": "2024-06-01T00:00:00",
+    "Seal Temperature": 41.2,
+    "Bearing Vibration": 1.8,
+    "Discharge Pressure": 8.4,
+    "Suction Pressure": 2.1,
+    "Motor Current": 34.5
+  },
+  {
+    "asset_id": "PUMP1",
+    "timestamp": "2024-06-01T00:15:00",
+    "Seal Temperature": 42.0,
+    "Bearing Vibration": 2.1,
+    "Discharge Pressure": 8.5,
+    "Suction Pressure": 2.0,
+    "Motor Current": 35.2
+  },
+  {
+    "asset_id": "PUMP1",
+    "timestamp": "2024-06-01T00:30:00",
+    "Seal Temperature": 43.5,
+    "Bearing Vibration": 2.9,
+    "Discharge Pressure": 8.3,
+    "Suction Pressure": 2.2,
+    "Motor Current": 36.8
+  }
+]

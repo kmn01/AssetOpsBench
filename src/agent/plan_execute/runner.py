@@ -12,6 +12,7 @@ an MCP-native implementation:
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from pathlib import Path
 
@@ -87,9 +88,11 @@ class PlanExecuteRunner(AgentRunner):
         _log.info("Discovering server capabilities...")
         server_descriptions = await self._executor.get_server_descriptions()
 
-        # 2. Plan
+        # 2. Plan (thread: sync LLM must not block the asyncio event loop)
         _log.info("Planning...")
-        plan = self._planner.generate_plan(question, server_descriptions)
+        plan = await asyncio.to_thread(
+            self._planner.generate_plan, question, server_descriptions
+        )
         _log.info("Plan has %d step(s).", len(plan.steps))
 
         # 3. Execute
@@ -102,8 +105,9 @@ class PlanExecuteRunner(AgentRunner):
             + (r.response if r.success else f"ERROR: {r.error}")
             for r in history
         )
-        answer = self._llm.generate(
-            _SUMMARIZE_PROMPT.format(question=question, results=results_text)
+        answer = await asyncio.to_thread(
+            self._llm.generate,
+            _SUMMARIZE_PROMPT.format(question=question, results=results_text),
         )
 
         return OrchestratorResult(

@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import logging
+import os
 import sys
 
-import os
-
+import anyio
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -22,6 +22,7 @@ from .registry import (
     get_manifest_for_fqid,
     list_skill_items,
     load_skill_catalog,
+    maybe_bootstrap_install_state,
 )
 from .results import SkillInvocationError, SkillRunResult
 from .runner import run_skill_impl
@@ -33,6 +34,23 @@ logging.basicConfig(level=_log_level)
 _log = logging.getLogger(__name__)
 
 mcp = FastMCP("skills")
+
+
+def _exc_group_is_only_client_disconnect(exc: BaseException) -> bool:
+    """True when every leaf is only ``ClosedResourceError`` (stdin closed first).
+
+    Plan-execute / IDE MCP clients often close stdio right after the last tool
+    result is consumed; the server can still be in ``_send_response``, which
+    then raises — buried inside nested ``ExceptionGroup``s. Not a user-facing
+    failure once the tool already completed.
+    """
+    if isinstance(exc, anyio.ClosedResourceError):
+        return True
+    if isinstance(exc, BaseExceptionGroup):
+        return bool(exc.exceptions) and all(
+            _exc_group_is_only_client_disconnect(e) for e in exc.exceptions
+        )
+    return False
 
 
 class ListSkillsResult(BaseModel):
@@ -74,9 +92,16 @@ async def run_skill(
     return await run_skill_impl(skill_id.strip(), arguments or {})
 
 
-def main():
+def main() -> None:
     _startup_validate_catalog()
-    mcp.run(transport="stdio")
+    maybe_bootstrap_install_state()
+    try:
+        mcp.run(transport="stdio")
+    except BaseExceptionGroup as eg:
+        if _exc_group_is_only_client_disconnect(eg):
+            _log.debug("MCP stdio client disconnected during shutdown (benign).")
+            return
+        raise
 
 
 if __name__ == "__main__":

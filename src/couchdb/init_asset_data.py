@@ -9,6 +9,9 @@ Environment variables (or .env):
     COUCHDB_PASSWORD   admin password
     IOT_DBNAME         target database (default: chiller)
     ASSET_DATA_FILE    override JSON file path
+
+If ``sample_data/iot/pump1_sensordata_couchdb.json`` sits beside the main data
+file, its documents are merged in (demo asset_id ``PUMP1`` for pump seal skill).
 """
 
 import argparse
@@ -137,6 +140,23 @@ def main() -> None:
         sys.exit(1)
 
     logger.info("Loaded %d documents from '%s'", len(docs), args.data_file)
+
+    # Demo pump rows for pump_seal_inspection (asset_id PUMP1) alongside chillers.
+    _extra = os.path.join(
+        os.path.dirname(os.path.abspath(args.data_file)),
+        "pump1_sensordata_couchdb.json",
+    )
+    if os.path.isfile(_extra):
+        with open(_extra) as ef:
+            extra_docs = json.load(ef)
+        if isinstance(extra_docs, list) and extra_docs:
+            docs.extend(extra_docs)
+            logger.info(
+                "Merged %d extra documents from %s (total %d)",
+                len(extra_docs),
+                _extra,
+                len(docs),
+            )
 
     created = _ensure_db(args.db, drop=args.drop)
     if created:

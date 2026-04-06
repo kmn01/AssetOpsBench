@@ -40,6 +40,9 @@ class LiteLLMBackend(LLMBackend):
             "temperature": temperature,
             "max_tokens": 2048,
         }
+        if http_timeout := os.environ.get("LLM_HTTP_TIMEOUT_SEC"):
+            # Per-request timeout (seconds) so hung TCP to WatsonX / proxy fails fast.
+            kwargs["timeout"] = float(http_timeout)
 
         if self._model_id.startswith("watsonx/"):
             kwargs["api_key"] = os.environ["WATSONX_APIKEY"]
