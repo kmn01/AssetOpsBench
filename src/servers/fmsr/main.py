@@ -225,9 +225,8 @@ def get_failure_mode_sensor_mapping(
     the full per-pair relevancy details.
 
     Note: one LLM call is made per (failure_mode, sensor) pair sequentially.
-    Keep both lists small (e.g. ≤5 failure modes, ≤10 sensors) to avoid long
-    runtimes. For a chiller with 7 failure modes and 20+ sensors the call will
-    take several minutes."""
+    Keep both lists small; composed skills typically cap inputs (e.g. 3×4 pairs).
+    Large grids (e.g. 7×20) can run many minutes and exceed MCP client timeouts."""
     if not asset_name:
         return ErrorResult(error="asset_name is required")
     if not failure_modes:

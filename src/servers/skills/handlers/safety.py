@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+
 from pydantic import BaseModel
 
 from ..results import SkillRunResult, SkillStepResult
@@ -19,25 +21,23 @@ async def run_safety_clearance_check(pool, arguments: dict) -> SkillRunResult:
     site = args.site_name.strip()
     aid = args.asset_id.strip()
 
-    steps: list = []
-    steps.append(
-        await mcp_step(
+    iot_s, wo_s = await asyncio.gather(
+        mcp_step(
             pool,
             name="iot_sensors",
             server="iot",
             tool="sensors",
             arguments={"site_name": site, "asset_id": aid},
-        )
-    )
-    steps.append(
-        await mcp_step(
+        ),
+        mcp_step(
             pool,
             name="wo_get_work_orders",
             server="wo",
             tool="get_work_orders",
             arguments={"equipment_id": aid},
-        )
+        ),
     )
+    steps = [iot_s, wo_s]
 
     sensors_ok = steps[0].ok and detail_ok(steps[0].detail)
     wo_ok = steps[1].ok and detail_ok(steps[1].detail)

@@ -15,6 +15,8 @@ import re
 from pathlib import Path
 from typing import Any
 
+import anyio
+
 from llm import LLMBackend
 from servers.common.mcp_stdio import make_stdio_params
 
@@ -24,7 +26,14 @@ _log = logging.getLogger(__name__)
 
 _REPO_ROOT = Path(__file__).parent.parent.parent.parent
 
-_MCP_CLIENT_TIMEOUT_SEC = float(os.environ.get("MCP_CLIENT_TIMEOUT_SEC", "300"))
+# Composed skills (e.g. FMSR FM×sensor mapping) can run many sequential LLM calls.
+_MCP_CLIENT_TIMEOUT_SEC = float(os.environ.get("MCP_CLIENT_TIMEOUT_SEC", "600"))
+
+# Arg-resolution uses sync llm.generate(); run it in a thread and bound wall time
+# so a hung provider does not freeze the asyncio loop indefinitely.
+_ARG_RESOLUTION_LLM_TIMEOUT_SEC = float(
+    os.environ.get("PLAN_EXECUTE_ARG_LLM_TIMEOUT_SEC", "180")
+)
 
 # Maps agent names to either a uv entry-point name (str) or a script Path.
 # Entry-point names are invoked as ``uv run <name>``; Paths fall back to
@@ -59,6 +68,19 @@ Use the task description and prior step results to determine the correct argumen
 If a value comes from a list, use the first relevant element.
 
 JSON:"""
+
+# MCP lists ``arguments`` as an opaque object; spell out nested keys for the LLM.
+_RUN_SKILL_ARGS_HINT = """
+
+Extra rules for tool ``run_skill`` (skills server):
+- Output MUST be a JSON object with exactly two top-level keys: ``skill_id`` (string) and ``arguments`` (object). Do not flatten skill fields to the top level.
+- Nested keys belong inside ``arguments`` only.
+
+Required ``arguments`` by ``skill_id``:
+- ``assetopsbench/pump_seal_inspection``: ``site_name``, ``asset_id``, ``asset_name``. If the user names one pump token (e.g. PUMP1), use that value for both ``asset_id`` and ``asset_name`` unless prior steps give distinct values.
+- ``assetopsbench_demo/safety_clearance_check``: ``site_name``, ``asset_id``
+- ``assetopsbench_demo/asset_diagnostics_bundle``: ``site_name``, ``asset_id``, ``asset_name`` (same single-token rule as pump when applicable).
+"""
 
 
 class Executor:
@@ -183,6 +205,12 @@ class Executor:
             resolved_args = await _resolve_args_with_llm(
                 question, step.task, tool_name, tool_schema, context, self._llm
             )
+            _log.info(
+                "Step %d: calling MCP tool %r on server %r.",
+                step.step_number,
+                tool_name,
+                step.server,
+            )
 
             response = await _call_tool(server_path, tool_name, resolved_args)
             return StepResult(
@@ -227,7 +255,18 @@ async def _resolve_args_with_llm(
         .replace("{tool_schema}", tool_schema or "(unknown)")
         .replace("{context}", context_text or "(none)")
     )
-    raw = llm.generate(prompt)
+    if tool.strip().lower() == "run_skill":
+        prompt = prompt.rstrip() + _RUN_SKILL_ARGS_HINT
+    try:
+        raw = await asyncio.wait_for(
+            asyncio.to_thread(llm.generate, prompt),
+            timeout=_ARG_RESOLUTION_LLM_TIMEOUT_SEC,
+        )
+    except TimeoutError as exc:
+        raise TimeoutError(
+            f"LLM arg resolution exceeded {_ARG_RESOLUTION_LLM_TIMEOUT_SEC}s "
+            "(set PLAN_EXECUTE_ARG_LLM_TIMEOUT_SEC or fix connectivity / provider)"
+        ) from exc
     resolved = _parse_json(raw)
     if resolved is None:
         _log.warning(
@@ -305,8 +344,12 @@ async def _list_tools(server_path: Path | str) -> list[dict]:
                     )
                 return tools
 
+    # Use anyio.fail_after (not asyncio.wait_for): MCP stdio_client relies on
+    # anyio cancel scopes; asyncio cancelling the nested task breaks teardown
+    # with "Attempted to exit cancel scope in a different task".
     try:
-        return await asyncio.wait_for(_run(), timeout=_MCP_CLIENT_TIMEOUT_SEC)
+        with anyio.fail_after(_MCP_CLIENT_TIMEOUT_SEC):
+            return await _run()
     except TimeoutError as exc:
         raise TimeoutError(
             f"MCP list_tools exceeded {_MCP_CLIENT_TIMEOUT_SEC}s "
@@ -329,7 +372,8 @@ async def _call_tool(server_path: Path | str, tool_name: str, args: dict) -> str
                 return _extract_content(result.content)
 
     try:
-        return await asyncio.wait_for(_run(), timeout=_MCP_CLIENT_TIMEOUT_SEC)
+        with anyio.fail_after(_MCP_CLIENT_TIMEOUT_SEC):
+            return await _run()
     except TimeoutError as exc:
         raise TimeoutError(
             f"MCP call_tool({tool_name!r}) exceeded {_MCP_CLIENT_TIMEOUT_SEC}s "
