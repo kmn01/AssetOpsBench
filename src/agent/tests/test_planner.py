@@ -142,7 +142,7 @@ class TestPlanner:
     def test_generate_plan_uses_llm_output(self, mock_llm):
         llm = mock_llm(_TWO_STEP)
         planner = Planner(llm)
-        plan = planner.generate_plan(
+        plan, _usage = planner.generate_plan(
             "List all assets",
             {
                 "iot": "  - sites(): List sites\n  - assets(site_name: string): List assets"
@@ -156,9 +156,12 @@ class TestPlanner:
         captured = []
         llm = mock_llm(_TWO_STEP)
         original = llm.generate
-        llm.generate = lambda p, **kw: (captured.append(p), original(p))[1]
+        llm.generate = lambda p, temperature=0.0: (
+            captured.append(p),
+            original(p, temperature),
+        )[1]
 
-        Planner(llm).generate_plan(
+        _, _ = Planner(llm).generate_plan(
             "What sensors exist for CH-1?",
             {"iot": "  - sites(): List sites"},
         )
@@ -168,9 +171,12 @@ class TestPlanner:
         captured = []
         llm = mock_llm(_TWO_STEP)
         original = llm.generate
-        llm.generate = lambda p, **kw: (captured.append(p), original(p))[1]
+        llm.generate = lambda p, temperature=0.0: (
+            captured.append(p),
+            original(p, temperature),
+        )[1]
 
-        Planner(llm).generate_plan(
+        _, _ = Planner(llm).generate_plan(
             "Q",
             {
                 "iot": "  - sites(): List sites",
@@ -185,7 +191,10 @@ class TestPlanner:
         captured = []
         llm = mock_llm(_TWO_STEP)
         original = llm.generate
-        llm.generate = lambda p, **kw: (captured.append(p), original(p))[1]
+        llm.generate = lambda p, temperature=0.0: (
+            captured.append(p),
+            original(p, temperature),
+        )[1]
 
-        Planner(llm).generate_plan("Q", {"iot": "  - sites(): List sites"})
+        _, _ = Planner(llm).generate_plan("Q", {"iot": "  - sites(): List sites"})
         assert "#Args" not in captured[0]

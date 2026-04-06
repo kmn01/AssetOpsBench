@@ -10,6 +10,7 @@ import logging
 import re
 
 from llm import LLMBackend
+from llm.usage import CompletionUsage
 from .models import Plan, PlanStep
 
 _log = logging.getLogger(__name__)
@@ -135,7 +136,7 @@ class Planner:
         self,
         question: str,
         server_descriptions: dict[str, str],
-    ) -> Plan:
+    ) -> tuple[Plan, CompletionUsage]:
         """Generate a plan for a question given available servers and their tools.
 
         Args:
@@ -143,7 +144,8 @@ class Planner:
             server_descriptions: Mapping of server_name -> formatted tool signatures.
 
         Returns:
-            A Plan where each PlanStep includes the tool to call and its arguments.
+            The parsed :class:`~.models.Plan` and token usage for the planning LLM
+            call (may be all-``None`` if the backend does not report usage).
         """
         servers_text = "\n\n".join(
             f"{name}:\n{desc}" for name, desc in server_descriptions.items()
@@ -158,5 +160,5 @@ class Planner:
             valid_servers=valid_servers,
             skills_rule=skills_rule,
         )
-        raw = self._llm.generate(prompt)
-        return parse_plan(raw)
+        raw, usage = self._llm.generate_with_usage(prompt)
+        return parse_plan(raw), usage

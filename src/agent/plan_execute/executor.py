@@ -12,12 +12,14 @@ import json
 import logging
 import os
 import re
+import time
 from pathlib import Path
 from typing import Any
 
 import anyio
 
 from llm import LLMBackend
+from llm.usage import CompletionUsage
 from servers.common.mcp_stdio import make_stdio_params
 
 from .models import Plan, PlanStep, StepResult
@@ -198,28 +200,15 @@ class Executor:
                     f"Unknown server '{step.server}'. "
                     f"Registered servers: {list(self._server_paths)}"
                 ),
-            )
-
-        try:
-            _log.info("Step %d: calling LLM to resolve args.", step.step_number)
-            resolved_args = await _resolve_args_with_llm(
-                question, step.task, tool_name, tool_schema, context, self._llm
-            )
-            _log.info(
-                "Step %d: calling MCP tool %r on server %r.",
-                step.step_number,
-                tool_name,
-                step.server,
-            )
-
-            response = await _call_tool(server_path, tool_name, resolved_args)
-            return StepResult(
-                step_number=step.step_number,
-                task=step.task,
-                server=step.server,
-                response=response,
                 tool=tool_name,
-                tool_args=resolved_args,
+                tool_args=step.tool_args,
+            )
+
+        _log.info("Step %d: calling LLM to resolve args.", step.step_number)
+        t_arg = time.monotonic()
+        try:
+            resolved_args, arg_usage = await _resolve_args_with_llm(
+                question, step.task, tool_name, tool_schema, context, self._llm
             )
         except Exception as exc:  # noqa: BLE001
             return StepResult(
@@ -230,7 +219,47 @@ class Executor:
                 error=str(exc),
                 tool=tool_name,
                 tool_args=step.tool_args,
+                arg_resolution_ms=(time.monotonic() - t_arg) * 1000.0,
+                mcp_call_ms=None,
             )
+
+        arg_ms = (time.monotonic() - t_arg) * 1000.0
+        _log.info(
+            "Step %d: calling MCP tool %r on server %r.",
+            step.step_number,
+            tool_name,
+            step.server,
+        )
+        t_mcp = time.monotonic()
+        try:
+            response = await _call_tool(server_path, tool_name, resolved_args)
+        except Exception as exc:  # noqa: BLE001
+            return StepResult(
+                step_number=step.step_number,
+                task=step.task,
+                server=step.server,
+                response="",
+                error=str(exc),
+                tool=tool_name,
+                tool_args=resolved_args,
+                arg_resolution_ms=arg_ms,
+                mcp_call_ms=(time.monotonic() - t_mcp) * 1000.0,
+                arg_prompt_tokens=arg_usage.prompt_tokens,
+                arg_completion_tokens=arg_usage.completion_tokens,
+            )
+
+        return StepResult(
+            step_number=step.step_number,
+            task=step.task,
+            server=step.server,
+            response=response,
+            tool=tool_name,
+            tool_args=resolved_args,
+            arg_resolution_ms=arg_ms,
+            mcp_call_ms=(time.monotonic() - t_mcp) * 1000.0,
+            arg_prompt_tokens=arg_usage.prompt_tokens,
+            arg_completion_tokens=arg_usage.completion_tokens,
+        )
 
 
 # ── arg resolution ────────────────────────────────────────────────────────────
@@ -243,7 +272,7 @@ async def _resolve_args_with_llm(
     tool_schema: str,
     context: dict[int, StepResult],
     llm: LLMBackend,
-) -> dict:
+) -> tuple[dict, CompletionUsage]:
     """Generate tool arguments from the task description and prior step results."""
     context_text = "\n".join(
         f"Step {n}: {r.response}" for n, r in sorted(context.items())
@@ -258,8 +287,8 @@ async def _resolve_args_with_llm(
     if tool.strip().lower() == "run_skill":
         prompt = prompt.rstrip() + _RUN_SKILL_ARGS_HINT
     try:
-        raw = await asyncio.wait_for(
-            asyncio.to_thread(llm.generate, prompt),
+        raw, usage = await asyncio.wait_for(
+            asyncio.to_thread(llm.generate_with_usage, prompt),
             timeout=_ARG_RESOLUTION_LLM_TIMEOUT_SEC,
         )
     except TimeoutError as exc:
@@ -272,10 +301,10 @@ async def _resolve_args_with_llm(
         _log.warning(
             "Tool '%s': arg resolution returned no parseable JSON (response: %r…)",
             tool,
-            raw[:120],
+            (raw[:120] if raw else ""),
         )
-        return {}
-    return resolved
+        return {}, usage
+    return resolved, usage
 
 
 def _parse_json(raw: str) -> dict | None:

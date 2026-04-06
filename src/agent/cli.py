@@ -46,6 +46,8 @@ environment variables:
   MCP_CLIENT_TIMEOUT_SEC  Max seconds for each MCP connect / list_tools / call_tool
                           in plan-execute (default in code: 600). Raises TimeoutError if exceeded.
 
+  WandB (optional): see docs/WandB_Integration.md — WANDB_ENABLED, WANDB_PROJECT, etc.
+
 examples:
   plan-execute "What assets are at site MAIN?"
   plan-execute --model-id watsonx/ibm/granite-3-3-8b-instruct --show-plan "List sensors"
@@ -98,6 +100,14 @@ examples:
         "--quiet",
         action="store_true",
         help="Suppress progress logs (WARNING and above only on stderr).",
+    )
+    parser.add_argument(
+        "--benchmark-jsonl",
+        metavar="PATH",
+        help=(
+            "Append one JSON line with phase timings and tool-call counts after each run "
+            "(see docs/Skills_Server_Benchmarking.md)."
+        ),
     )
     return parser
 
@@ -172,10 +182,37 @@ async def _run(args: argparse.Namespace) -> None:
     runner = PlanExecuteRunner(llm=llm, server_paths=server_paths)
     result = await runner.run(args.question)
 
+    if result.metrics is not None:
+        from agent.plan_execute.metrics import append_jsonl
+        from observability.benchmark_wandb import (
+            log_plan_execute_benchmark_if_configured,
+            should_emit_plan_execute_wandb,
+        )
+
+        bench_rec = result.metrics.to_benchmark_record(
+            question=result.question,
+            model_id=args.model_id,
+        )
+        if args.benchmark_jsonl:
+            append_jsonl(args.benchmark_jsonl, bench_rec)
+        if should_emit_plan_execute_wandb(
+            wrote_benchmark_jsonl=bool(args.benchmark_jsonl),
+        ):
+            extra: dict = {}
+            if args.benchmark_jsonl:
+                extra["benchmark_jsonl_path"] = str(args.benchmark_jsonl)
+            log_plan_execute_benchmark_if_configured(
+                bench_rec,
+                extra_config=extra or None,
+            )
+
     if args.output_json:
         output = {
             "question": result.question,
             "answer": result.answer,
+            "metrics": (
+                result.metrics.to_json_dict() if result.metrics is not None else None
+            ),
             "plan": [
                 {
                     "step": s.step_number,
