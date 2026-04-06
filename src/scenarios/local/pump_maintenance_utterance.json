@@ -1,0 +1,72 @@
+[
+  {
+    "id": 401,
+    "type": "PumpMaintenance",
+    "text": "What failure modes are defined for a centrifugal pump?",
+    "category": "Knowledge Query",
+    "characteristic_form": "The expected response should list pump-centric failure modes such as seal failure, bearing failure, cavitation, impeller wear, and misalignment (aligned with FMSR hard-coded list for asset type centrifugal pump)."
+  },
+  {
+    "id": 402,
+    "type": "PumpMaintenance",
+    "text": "List IoT sensors and recent readings for asset PUMP1 at site MAIN.",
+    "category": "Data Retrieval",
+    "characteristic_form": "The expected response should use the iot server (e.g. sensors or assets) for site MAIN and asset_id PUMP1 and mention seal temperature, bearing vibration, pressures, or motor current when sample data is loaded. Requires CouchDB seed including pump1_sensordata_couchdb merge."
+  },
+  {
+    "id": 403,
+    "type": "PumpMaintenance",
+    "text": "Show open and recent work orders for equipment PUMP1.",
+    "category": "Data Retrieval",
+    "characteristic_form": "The expected response should query the wo server for equipment_id PUMP1 and return WO identifiers or maintenance themes (e.g. seal, bearing) when work-order CSV seed is present."
+  },
+  {
+    "id": 404,
+    "type": "PumpMaintenance",
+    "text": "Run the bundled pump seal inspection skill for PUMP1 at site MAIN: pull sensors, failure modes, and work orders in one go.",
+    "category": "Composed Skill",
+    "characteristic_form": "The expected response should use the skills server run_skill with skill_id assetopsbench/pump_seal_inspection and arguments site_name MAIN, asset_id PUMP1, asset_name PUMP1 (or equivalent), and summarize the three sibling results."
+  },
+  {
+    "id": 405,
+    "type": "PumpMaintenance",
+    "text": "Use the asset diagnostics bundle skill for site MAIN and asset PUMP1.",
+    "category": "Composed Skill",
+    "characteristic_form": "The expected response should call run_skill with skill_id assetopsbench_demo/asset_diagnostics_bundle including IoT sensors, get_failure_modes, and get_failure_mode_sensor_mapping for the pump asset."
+  },
+  {
+    "id": 406,
+    "type": "PumpMaintenance",
+    "text": "Perform a safety clearance check for asset PUMP1 at site MAIN before maintenance.",
+    "category": "Composed Skill",
+    "characteristic_form": "The expected response should use run_skill assetopsbench_demo/safety_clearance_check with site_name MAIN and asset_id PUMP1 and report the clearance outcome from the skill steps."
+  },
+  {
+    "id": 407,
+    "type": "PumpMaintenance",
+    "text": "What assets exist at site MAIN? Then list sensors for any centrifugal pump asset you find.",
+    "category": "Multi-step discovery",
+    "characteristic_form": "The expected response should first discover assets at MAIN (iot assets or list equivalent), identify PUMP1 or similar pump asset, then retrieve sensors for that asset_id."
+  },
+  {
+    "id": 408,
+    "type": "PumpMaintenance",
+    "text": "PUMP1 seal temperature readings are drifting upward on 2024-06-01. What failure mode from the standard list should we suspect first and what recent OM history supports or contradicts seal stress?",
+    "category": "Diagnostic",
+    "characteristic_form": "The expected response should reference elevated seal temperature from IoT data, map to seal-related failure mode from FMSR, and cite relevant work orders (e.g. seal inspection) from the wo server."
+  },
+  {
+    "id": 409,
+    "type": "PumpMaintenance",
+    "text": "Compare micro-tool orchestration vs a single skill: first list sensors for PUMP1 at MAIN only using iot tools, then answer the same information need using only run_skill assetopsbench/pump_seal_inspection.",
+    "category": "Benchmark framing",
+    "characteristic_form": "Used for ablation studies: compare plan depth, tool_calls_attempted, and e2e_ms between runs with and without the skills server in DEFAULT_SERVER_PATHS or with the planner choosing iot/fmsr/wo directly vs run_skill."
+  },
+  {
+    "id": 410,
+    "type": "PumpMaintenance",
+    "text": "What is the correct procedure to inspect a mechanical seal on a centrifugal pump before returning it to service?",
+    "category": "Procedure (RAG placeholder)",
+    "characteristic_form": "Until the knowledge plugin is wired, the model may answer from general knowledge or stall; after retrieval MCP lands, the expected path uses chunked procedure docs with citations. Marks a future success criterion for §2 of the HPML implementation plan."
+  }
+]

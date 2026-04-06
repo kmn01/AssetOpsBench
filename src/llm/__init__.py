@@ -2,5 +2,6 @@
 
 from .base import LLMBackend
 from .litellm import LiteLLMBackend
+from .usage import CompletionUsage
 
-__all__ = ["LLMBackend", "LiteLLMBackend"]
+__all__ = ["LLMBackend", "CompletionUsage", "LiteLLMBackend"]
