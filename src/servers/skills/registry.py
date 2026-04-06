@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import os
-from pathlib import Path
+from functools import lru_cache
+from importlib.resources import files
 
 import yaml
 from pydantic import BaseModel, Field
@@ -41,9 +42,6 @@ class MarketplaceError(BaseModel):
     error: str
 
 
-_MANIFEST_PATH = Path(__file__).parent / "manifest.yaml"
-
-
 def _parse_enabled_allowlist() -> frozenset[str] | None:
     raw = os.environ.get("ENABLED_SKILLS", "").strip()
     if not raw:
@@ -59,13 +57,15 @@ def _is_enabled(skill_id: str, record: SkillManifestRecord, allow: frozenset[str
     return skill_id in allow
 
 
-def load_manifest_records() -> list[SkillManifestRecord]:
-    with _MANIFEST_PATH.open() as f:
+@lru_cache(maxsize=1)
+def load_manifest_records() -> tuple[SkillManifestRecord, ...]:
+    manifest = files("servers.skills").joinpath("manifest.yaml")
+    with manifest.open("r", encoding="utf-8") as f:
         data = yaml.safe_load(f)
     entries = data.get("skills") if isinstance(data, dict) else data
     if not entries:
-        return []
-    return [SkillManifestRecord.model_validate(item) for item in entries]
+        return ()
+    return tuple(SkillManifestRecord.model_validate(item) for item in entries)
 
 
 def list_skill_summaries() -> list[SkillSummary]:

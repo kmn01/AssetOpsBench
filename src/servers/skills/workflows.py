@@ -2,13 +2,7 @@
 
 from __future__ import annotations
 
-from typing import List, Union
-
 from pydantic import BaseModel, Field
-
-from servers.fmsr.main import get_failure_modes
-from servers.iot.main import sensors
-from servers.wo.tools import get_work_orders
 
 
 class WorkflowError(BaseModel):
@@ -25,15 +19,28 @@ class PumpSealInspectionWorkflowResult(BaseModel):
     site_name: str
     asset_id: str
     asset_name: str
-    steps: List[WorkflowStepResult]
+    steps: list[WorkflowStepResult]
+
+
+def _append_step(
+    steps: list[WorkflowStepResult], name: str, result: BaseModel
+) -> None:
+    data = result.model_dump()
+    steps.append(
+        WorkflowStepResult(name=name, ok="error" not in data, detail=data),
+    )
 
 
 def run_pump_seal_inspection_workflow(
     site_name: str,
     asset_id: str,
     asset_name: str,
-) -> Union[PumpSealInspectionWorkflowResult, WorkflowError]:
+) -> PumpSealInspectionWorkflowResult | WorkflowError:
     """Run IoT sensors + FMSR failure modes + work orders in one MCP tool call."""
+    from servers.fmsr.main import get_failure_modes
+    from servers.iot.main import sensors
+    from servers.wo.tools import get_work_orders
+
     site = (site_name or "").strip()
     aid = (asset_id or "").strip()
     aname = (asset_name or "").strip()
@@ -46,35 +53,9 @@ def run_pump_seal_inspection_workflow(
 
     steps: list[WorkflowStepResult] = []
 
-    sn = sensors(site, aid)
-    sn_dump = sn.model_dump()
-    steps.append(
-        WorkflowStepResult(
-            name="iot_sensors",
-            ok="error" not in sn_dump,
-            detail=sn_dump,
-        )
-    )
-
-    fm = get_failure_modes(aname)
-    fm_dump = fm.model_dump()
-    steps.append(
-        WorkflowStepResult(
-            name="fmsr_failure_modes",
-            ok="error" not in fm_dump,
-            detail=fm_dump,
-        )
-    )
-
-    wo = get_work_orders(aid)
-    wo_dump = wo.model_dump()
-    steps.append(
-        WorkflowStepResult(
-            name="wo_get_work_orders",
-            ok="error" not in wo_dump,
-            detail=wo_dump,
-        )
-    )
+    _append_step(steps, "iot_sensors", sensors(site, aid))
+    _append_step(steps, "fmsr_failure_modes", get_failure_modes(aname))
+    _append_step(steps, "wo_get_work_orders", get_work_orders(aid))
 
     return PumpSealInspectionWorkflowResult(
         site_name=site,
