@@ -1,0 +1,21 @@
+pack_id: assetopsbench_demo
+skills:
+  - id: asset_diagnostics_bundle
+    version: "1.0.0"
+    description: >
+      Gathers live sensors, known failure modes, then relevance mapping between
+      failure modes and sensors — a compact root-cause / diagnostics style bundle.
+    required_servers: [iot, fmsr]
+    asset_types: [centrifugal_pump, pump, chiller, ahu]
+    keywords: [diagnostics, root cause, failure mode, sensors, mapping]
+    default_enabled: true
+
+  - id: safety_clearance_check
+    version: "1.0.0"
+    description: >
+      Verifies the asset is observable on IoT and has maintenance history in
+      work orders, then applies a simple clearance gate suitable for demo safety checks.
+    required_servers: [iot, wo]
+    asset_types: [centrifugal_pump, pump, chiller, ahu]
+    keywords: [safety, clearance, work order, sensors, readiness]
+    default_enabled: true
