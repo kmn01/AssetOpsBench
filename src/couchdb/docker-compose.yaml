@@ -2,24 +2,22 @@ services:
   couchdb:
     image: couchdb:3.5
     environment:
-      COUCHDB_USERNAME: admin
+      COUCHDB_USER: admin
       COUCHDB_PASSWORD: password
-      IOT_DBNAME: chiller
-      WO_DBNAME: workorder
-      VIBRATION_DBNAME: vibration
     ports:
       - "5984:5984"
     volumes:
       - couchdb-data:/opt/couchdb/data
-      - ./couchdb_setup.sh:/opt/couchdb/etc/couchdb_setup.sh
+      - ./init.sh:/opt/couchdb/init.sh
+      - ./init_asset_data.py:/couchdb/init_asset_data.py
+      - ./init_wo.py:/couchdb/init_wo.py
       - ./sample_data:/sample_data
-      - ./:/couchdb
-    command: ["sh", "/opt/couchdb/etc/couchdb_setup.sh"]
+    command: ["bash", "/opt/couchdb/init.sh"]
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5984/"]
-      interval: 10s
+      test: ["CMD", "curl", "-f", "-u", "admin:password", "http://localhost:5984/"]
+      interval: 5s
       timeout: 5s
-      retries: 10
+      retries: 20
 
 volumes:
   couchdb-data:

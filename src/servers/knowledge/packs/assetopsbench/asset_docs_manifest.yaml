@@ -1,0 +1,80 @@
+# Asset-to-Documentation Mapping for Knowledge Plugin
+# This manifest defines which PDFs apply to which asset types
+# Used by the knowledge plugin to filter and retrieve relevant documentation
+
+pump:
+  description: "Centrifugal pump manuals and maintenance guides"
+  keywords:
+    - pump
+    - seal
+    - centrifugal
+    - mechanical_seal
+    - NPSH
+    - cavitation
+    - vibration
+    - bearing
+  asset_types:
+    - pump
+    - centrifugal_pump
+  documents:
+    - pump_seal_inspection_manual.pdf
+    - maintenance_handbook.pdf
+
+chiller:
+  description: "Chiller operations, maintenance, and troubleshooting guides"
+  keywords:
+    - chiller
+    - cooling
+    - refrigerant
+    - compressor
+    - heat_exchanger
+    - condenser
+    - evaporator
+    - hvac
+    - ahu
+  asset_types:
+    - chiller
+    - hvac
+    - ahu
+    - air_handling_unit
+  documents:
+    - chiller_operations_guide.pdf
+    - maintenance_handbook.pdf
+
+motor:
+  description: "Electric motor specifications and maintenance"
+  keywords:
+    - motor
+    - electric
+    - induction
+    - bearing
+    - windings
+    - insulation
+    - current
+    - amperage
+  asset_types:
+    - motor
+    - electric_motor
+    - induction_motor
+  documents:
+    - maintenance_handbook.pdf
+
+general:
+  description: "General maintenance practices applicable to all assets"
+  keywords:
+    - safety
+    - predictive_maintenance
+    - vibration_analysis
+    - thermal_imaging
+    - oil_analysis
+    - failure_modes
+    - inspection
+    - record_keeping
+    - lockout_tagout
+    - loto
+    - ppe
+    - troubleshooting
+  asset_types:
+    - general_maintenance  # General procedures for all asset types
+  documents:
+    - maintenance_handbook.pdf
