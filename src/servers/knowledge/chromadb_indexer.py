@@ -151,28 +151,32 @@ def _load_manifest() -> Dict[str, Any]:
 # PDF Processing
 # ─────────────────────────────────────────────────────────────────────────────
 
-def _extract_text_from_pdf(pdf_path: Path) -> str:
-    """Extract text from PDF with fallback methods."""
+def _extract_text_from_pdf(pdf_path: Path) -> List[Tuple[int, str]]:
+    """Extract text from PDF with page numbers. Returns list of (page_number, text) tuples."""
     try:
         import pdfplumber
-        text = ""
+        pages_with_text = []
         with pdfplumber.open(pdf_path) as pdf:
-            for page in pdf.pages:
-                text += page.extract_text() or ""
-        return text
+            for page_num, page in enumerate(pdf.pages, start=1):
+                text = page.extract_text() or ""
+                if text.strip():  # Only include non-empty pages
+                    pages_with_text.append((page_num, text))
+        return pages_with_text
     except Exception as e:
         logger.warning(f"pdfplumber failed for {pdf_path}, trying PyPDF2: {e}")
         try:
             from PyPDF2 import PdfReader
-            text = ""
+            pages_with_text = []
             with open(pdf_path, "rb") as f:
                 reader = PdfReader(f)
-                for page in reader.pages:
-                    text += page.extract_text() or ""
-            return text
+                for page_num, page in enumerate(reader.pages, start=1):
+                    text = page.extract_text() or ""
+                    if text.strip():
+                        pages_with_text.append((page_num, text))
+            return pages_with_text
         except Exception as e2:
             logger.error(f"Failed to extract text from {pdf_path}: {e2}")
-            return ""
+            return []
 
 
 def _tokenize(text: str) -> List[str]:
@@ -180,17 +184,19 @@ def _tokenize(text: str) -> List[str]:
     return text.split()
 
 
-def _chunk_text(text: str, chunk_size: int = CHUNK_SIZE_TOKENS, overlap: int = CHUNK_OVERLAP_TOKENS) -> List[str]:
-    """Split text into overlapping chunks with smart sentence boundaries."""
-    tokens = _tokenize(text)
-    chunks = []
+def _chunk_text(pages_with_text: List[Tuple[int, str]], chunk_size: int = CHUNK_SIZE_TOKENS, overlap: int = CHUNK_OVERLAP_TOKENS) -> List[Tuple[int, str]]:
+    """Split text into overlapping chunks with page numbers preserved."""
+    chunks_with_pages = []
     
-    for i in range(0, len(tokens), chunk_size - overlap):
-        chunk = tokens[i:i + chunk_size]
-        if chunk:
-            chunks.append(" ".join(chunk))
+    for page_num, text in pages_with_text:
+        tokens = _tokenize(text)
+        
+        for i in range(0, len(tokens), chunk_size - overlap):
+            chunk = tokens[i:i + chunk_size]
+            if chunk:
+                chunks_with_pages.append((page_num, " ".join(chunk)))
     
-    return chunks
+    return chunks_with_pages
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -259,24 +265,26 @@ def _rebuild_asset_collection(asset_type: str) -> None:
             continue
         
         logger.info(f"  Processing: {pdf_name}")
-        text = _extract_text_from_pdf(pdf_path)
-        if not text:
+        pages_with_text = _extract_text_from_pdf(pdf_path)
+        if not pages_with_text:
             logger.warning(f"  No text extracted from {pdf_name}")
             continue
         
-        chunks = _chunk_text(text)
-        logger.info(f"  Created {len(chunks)} chunks from {pdf_name}")
+        chunks_with_pages = _chunk_text(pages_with_text)
+        logger.info(f"  Created {len(chunks_with_pages)} chunks from {pdf_name} ({len(pages_with_text)} pages)")
         
         # Embed chunks (batch for efficiency)
-        embeddings = embed_model.encode(chunks, show_progress_bar=False).tolist()
+        chunks_only = [chunk for page_num, chunk in chunks_with_pages]
+        embeddings = embed_model.encode(chunks_only, show_progress_bar=False).tolist()
         
-        for chunk, embedding in zip(chunks, embeddings):
+        for (page_num, chunk), embedding in zip(chunks_with_pages, embeddings):
             batch_documents.append(chunk)
             batch_embeddings.append(embedding)
             batch_ids.append(f"{asset_type}_{document_id}")
             batch_metadata.append({
                 "source": pdf_name,
                 "asset_type": asset_type,
+                "page": page_num,
                 "chunk_index": len(batch_ids) - 1
             })
             document_id += 1
@@ -425,6 +433,7 @@ def search_vectors(
                         "text": doc,
                         "similarity": max(0, similarity),
                         "source": metadata.get("source", "unknown"),
+                        "page": metadata.get("page"),
                         "asset_type": asset_type
                     })
         except Exception as e:
@@ -457,6 +466,7 @@ def search_vectors(
                             "text": doc,
                             "similarity": max(0, similarity),
                             "source": metadata.get("source", "unknown"),
+                            "page": metadata.get("page"),
                             "asset_type": at
                         })
             except Exception as e:
