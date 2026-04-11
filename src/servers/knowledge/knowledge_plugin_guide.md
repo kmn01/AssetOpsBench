@@ -44,47 +44,45 @@ After following these steps, you'll have:
 ### 1.1: Verify Prerequisites
 
 ```powershell
-python --version      # Need 3.12+
+python --version      # Need 3.8+
 docker --version      # Docker Desktop running
 uv --version          # uv package manager
 ```
 
 ### 1.2: Start CouchDB + Load All Data (ONE COMMAND!)
 
-**Terminal 1:**
+**Run from repository root:**
 ```powershell
-cd C:\Users\yeshi\AssetOpsBench\src\couchdb
-docker compose up -d
+uv run python start_couchdb_with_data.py
 ```
 
-**This automatically:**
-- ✅ Starts CouchDB container
-- ✅ Waits for CouchDB to be ready
-- ✅ Loads IoT sensor data (2,896 chiller + 3 pump = **2,899 documents**)
-- ✅ Loads work order data (**12,267 documents**)
-- ✅ **Total: 15,166 documents!**
+**This script automatically:**
+- ✅ Starts CouchDB container (Docker)
+- ✅ Waits for CouchDB to be ready (~5-10 seconds)
+- ✅ Loads IoT sensor data (2,900 chiller + pump documents)
+- ✅ Loads work order data (12,272 documents)
+- ✅ **Total: 15,172 documents!**
 
-### 1.3: Verify Data is Loaded (Pick ONE method)
+**That's it! No manual steps needed.**
 
-**Method 1: Check logs for success message**
+> **Note:** Works on Windows, Mac, and Linux with the same command!
+
+### 1.3: Verify Data is Loaded
+
+**Quick verification:**
 ```powershell
-docker compose logs | findstr "All databases initialised"
+curl -u admin:password http://localhost:5984/_all_dbs
 ```
 
-**Method 2: Poll until databases are ready**
+**Expected Output:**
+```json
+["_replicator","_users","chiller","workorder"]
+```
+
+**Check document counts:**
 ```powershell
-# This command waits up to 60 seconds for databases to be loaded
-$i=0; while($i -lt 60) { Try { $result = curl -s -u admin:password http://localhost:5984/_all_dbs; if($result -like '*workorder*') { Write-Host "✅ CouchDB Ready! Databases loaded!"; break } } Catch { }; Write-Host "Waiting... ($i/60)"; $i++; Start-Sleep -Seconds 1 }
-```
-
-**Method 3: Quick health check**
-```powershell
-curl -u admin:password http://localhost:5984/
-```
-
-**Expected Output from Method 2 or 3:**
-```
-["chiller","workorder"]
+curl -u admin:password http://localhost:5984/chiller | python -m json.tool | findstr "doc_count"
+curl -u admin:password http://localhost:5984/workorder | python -m json.tool | findstr "doc_count"
 ```
 
 ✅ **Data Ready!** Move to Part 2.
