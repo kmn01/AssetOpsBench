@@ -22,6 +22,7 @@ from typing import Any, Dict
 from fastmcp import FastMCP
 
 from .chromadb_indexer import ensure_initialized
+from .citations import format_citations, format_citation_inline
 from .retriever import (
     get_asset_docs,
     get_asset_types,
@@ -42,22 +43,22 @@ logger = logging.getLogger(__name__)
 
 app = FastMCP("knowledge-mcp-server")
 
+# Global initialization flag
+_initialized = False
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Startup - NO INDEX BUILDING (fast!)
-# ─────────────────────────────────────────────────────────────────────────────
-
-@app.on_startup
-async def startup():
-    """Startup - initialize ChromaDB collections (one-time)."""
-    logger.info("Knowledge Plugin MCP Server starting...")
-    logger.info("  🔄 Initializing ChromaDB collections...")
-    try:
-        ensure_initialized()
-        logger.info("  ✅ ChromaDB ready. All queries will be instant (<100ms)")
-    except Exception as e:
-        logger.error(f"  ❌ ChromaDB initialization failed: {e}")
-        raise
+def _ensure_initialized_once():
+    """Initialize ChromaDB collections on first use."""
+    global _initialized
+    if not _initialized:
+        logger.info("Knowledge Plugin MCP Server initializing...")
+        logger.info("  🔄 Initializing ChromaDB collections...")
+        try:
+            ensure_initialized()
+            logger.info("  ✅ ChromaDB ready. All queries will be instant (<100ms)")
+            _initialized = True
+        except Exception as e:
+            logger.error(f"  ❌ ChromaDB initialization failed: {e}")
+            raise
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -69,7 +70,7 @@ def search_by_asset_type_tool(
     asset_type: str,
     query: str,
     top_k: int = 3
-) -> Dict[str, Any]:
+) -> str:
     """Search documentation by asset type and query.
     
     Use this to find relevant maintenance procedures, specifications, or
@@ -86,39 +87,45 @@ def search_by_asset_type_tool(
         query: What to search for (maintenance, specs, troubleshooting, etc.)
         top_k: Number of results (default 3)
     """
+    _ensure_initialized_once()
     logger.info(f"🔍 Searching {asset_type}: {query} (top_k={top_k})")
     
     try:
         results = search_by_asset_type(asset_type, query, top_k=top_k)
         
-        return {
-            "status": "success",
-            "asset_type": asset_type,
-            "query": query,
-            "results_count": len(results),
-            "results": [
-                {
-                    "text": r["text"],
-                    "source": r["source"],
-                    "similarity": f"{r['similarity']:.0%}",
-                }
-                for r in results
-            ]
-        }
+        if not results:
+            return f"No results found for {asset_type} - {query}"
+        
+        # Build formatted response with FULL results and citations for LLM synthesis
+        output_lines = [
+            f"Search Results for '{query}' in {asset_type} asset type:",
+            "=" * 80,
+            ""
+        ]
+        
+        for idx, r in enumerate(results, 1):
+            # Include full text (not truncated) for LLM to synthesize
+            output_lines.append(f"Result {idx}:")
+            output_lines.append(f"Content: {r['text']}")
+            output_lines.append(f"Source: {r['source']}, Page {r.get('page', 'N/A')}, Match confidence: {r['similarity']:.0%}")
+            output_lines.append("")
+        
+        # Add formatted citations block at the end
+        output_lines.append("=" * 80)
+        output_lines.append(format_citations(results))
+        
+        return "\n".join(output_lines)
+        
     except Exception as e:
         logger.error(f"Search failed: {e}", exc_info=True)
-        return {
-            "status": "error",
-            "error": str(e),
-            "hint": "ChromaDB should be initialized at server startup. Check logs for details."
-        }
+        return f"Search error: {str(e)}"
 
 
 @app.tool()
 def search_by_keyword_tool(
     keyword: str,
     top_k: int = 5
-) -> Dict[str, Any]:
+) -> str:
     """Search across all asset types by keyword.
     
     Use this for broad searches across all available documentation.
@@ -127,31 +134,38 @@ def search_by_keyword_tool(
     Note: Slower than asset-type-specific search because multiple asset types
     may need indexing.
     """
+    _ensure_initialized_once()
     logger.info(f"🔍 Keyword search: {keyword} (top_k={top_k})")
     
     try:
         results = search_by_keyword(keyword, top_k=top_k)
         
-        return {
-            "status": "success",
-            "keyword": keyword,
-            "results_count": len(results),
-            "results": [
-                {
-                    "text": r["text"],
-                    "source": r["source"],
-                    "asset_type": r.get("asset_type", "unknown"),
-                    "similarity": f"{r['similarity']:.0%}",
-                }
-                for r in results
-            ]
-        }
+        if not results:
+            return f"No results found for keyword: {keyword}"
+        
+        # Build formatted response with FULL results and citations for LLM synthesis
+        output_lines = [
+            f"Search Results for keyword '{keyword}' across all asset types:",
+            "=" * 80,
+            ""
+        ]
+        
+        for idx, r in enumerate(results, 1):
+            # Include full text (not truncated) for LLM to synthesize
+            output_lines.append(f"Result {idx} ({r.get('asset_type', 'unknown')} asset):")
+            output_lines.append(f"Content: {r['text']}")
+            output_lines.append(f"Source: {r['source']}, Page {r.get('page', 'N/A')}, Match confidence: {r['similarity']:.0%}")
+            output_lines.append("")
+        
+        # Add formatted citations block at the end
+        output_lines.append("=" * 80)
+        output_lines.append(format_citations(results))
+        
+        return "\n".join(output_lines)
+        
     except Exception as e:
         logger.error(f"Search failed: {e}", exc_info=True)
-        return {
-            "status": "error",
-            "error": str(e)
-        }
+        return f"Search error: {str(e)}"
 
 
 @app.tool()
@@ -163,6 +177,7 @@ def get_asset_types_tool() -> Dict[str, Any]:
     
     Use this to discover what asset types are available before searching.
     """
+    _ensure_initialized_once()
     logger.info("📚 Listing available asset types")
     
     try:
@@ -198,6 +213,7 @@ def get_asset_docs_tool(asset_type: str) -> Dict[str, Any]:
     
     Use this to see what documentation is available before searching.
     """
+    _ensure_initialized_once()
     logger.info(f"📄 Getting docs for: {asset_type}")
     
     try:

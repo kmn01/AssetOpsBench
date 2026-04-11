@@ -1,45 +1,49 @@
 # 🔍 Knowledge Plugin - Complete Guide
 
-**Date:** April 9, 2026  
-**Status:** Production Ready  
+**Date:** April 11, 2026  
+**Status:** Production Ready with Citations ✅  
 **Technology:** ChromaDB (Vector Database) + Sentence-Transformers (Embeddings) + FastMCP (Server Framework)  
+**New Feature:** Detailed answers with PDF citations, page numbers, and confidence scores  
 **Single Source of Truth:** This is the ONLY documentation file needed for the knowledge plugin.
 
 ---
 
-## 📋 What Is This?
+## What Is This?
 
 This is a **complete, step-by-step guide** for the AssetOpsBench Knowledge Plugin:
 
-1. ✅ **What it does** - Semantic search of maintenance documentation
-2. ✅ **How it works** - ChromaDB indexing and embeddings  
-3. ✅ **Setup instructions** - Everything from zero to working
-4. ✅ **Testing examples** - Queries you can run right now
-5. ✅ **Troubleshooting** - Fixes for common issues
-6. ✅ **Architecture** - Technical details and design decisions
+1. **What it does** - Semantic search of maintenance documentation
+2. **How it works** - ChromaDB indexing and embeddings  
+3. **Setup instructions** - Everything from zero to working
+4. **Testing examples** - Queries you can run right now
+5. **Troubleshooting** - Fixes for common issues
+6. **Architecture** - Technical details and design decisions
 
 **Time Required:** ~20-30 minutes end-to-end
 
 ---
 
-## 🎯 What You'll Have After This Guide
+## What You'll Have After This Guide
 
 After following these steps, you'll have:
-- ✅ **CouchDB running** with 15,000+ maintenance documents loaded
-- ✅ **6 MCP Servers running** including the Knowledge Plugin
-- ✅ **ChromaDB indexed** with searchable PDF documentation
-- ✅ **Full system tested** with example queries working
+- **CouchDB running** with 15,000+ maintenance documents loaded
+- **8 MCP Servers running** (Utilities, IoT, FMSR, TSFM, Work Order, Vibration, Skills, Knowledge)
+- **ChromaDB indexed** with searchable PDF documentation
+- **Citations working** - Every answer shows: PDF name, page number, match confidence
+- **Full system tested** with example queries working
 
 ---
 
-## 🚀 QUICK START (30 Seconds)
+## QUICK START (30 Seconds)
 
-**Already have 6 servers running?** Skip to Part 3.  
+**Already have 8 servers running?** Skip to Part 3.  
 **Starting fresh?** Do Part 1, 2, then 3.
 
+**NEW:** All queries now return detailed answers with citations!
+
 ---
 
-## 🏗️ PART 1: LOAD DATA TO COUCHDB
+## PART 1: LOAD DATA TO COUCHDB
 
 ### 1.1: Verify Prerequisites
 
@@ -57,11 +61,11 @@ uv run python start_couchdb_with_data.py
 ```
 
 **This script automatically:**
-- ✅ Starts CouchDB container (Docker)
-- ✅ Waits for CouchDB to be ready (~5-10 seconds)
-- ✅ Loads IoT sensor data (2,900 chiller + pump documents)
-- ✅ Loads work order data (12,272 documents)
-- ✅ **Total: 15,172 documents!**
+- Starts CouchDB container (Docker)
+- Waits for CouchDB to be ready (~5-10 seconds)
+- Loads IoT sensor data (2,900 chiller + pump documents)
+- Loads work order data (12,272 documents)
+- **Total: 15,172 documents!**
 
 **That's it! No manual steps needed.**
 
@@ -89,9 +93,19 @@ curl -u admin:password http://localhost:5984/workorder | python -m json.tool | f
 
 ---
 
-## 🔌 PART 2: START ALL 6 MCP SERVERS
+## PART 2: START ALL 8 MCP SERVERS
 
-**IMPORTANT:** Each server needs its own terminal. Keep all 6 open.
+**IMPORTANT:** Each server needs its own terminal. Keep all 8 open.
+
+**Server List:**
+1. Utilities (utilities-mcp-server)
+2. IoT (iot-mcp-server)
+3. FMSR (fmsr-mcp-server)
+4. TSFM (tsfm-mcp-server)
+5. Work Order (wo-mcp-server)
+6. Vibration (vibration-mcp-server)
+7. Skills (skills-mcp-server) - WITH automatic skill installation
+8. Knowledge (knowledge-mcp-server) - WITH ChromaDB citations
 
 ### 2.1: Terminal 2 - Utilities Server
 
@@ -100,7 +114,7 @@ cd C:\Users\yeshi\AssetOpsBench
 uv run utilities-mcp-server
 ```
 
-✅ Keep running
+Keep running
 
 ### 2.2: Terminal 3 - IoT Server
 
@@ -109,7 +123,7 @@ cd C:\Users\yeshi\AssetOpsBench
 uv run iot-mcp-server
 ```
 
-✅ Keep running
+Keep running (connects to CouchDB)
 
 ### 2.3: Terminal 4 - FMSR Server
 
@@ -118,7 +132,7 @@ cd C:\Users\yeshi\AssetOpsBench
 uv run fmsr-mcp-server
 ```
 
-✅ Keep running
+Keep running
 
 ### 2.4: Terminal 5 - TSFM Server
 
@@ -127,11 +141,27 @@ cd C:\Users\yeshi\AssetOpsBench
 uv run tsfm-mcp-server
 ```
 
-✅ Keep running
+Keep running
 
-### 2.5: Terminal 6 - Skills Server (WITH Knowledge Plugin)
+### 2.5: Terminal 6 - Work Order Server
 
-**MOST IMPORTANT - This one has the knowledge plugin!**
+```powershell
+cd C:\Users\yeshi\AssetOpsBench
+uv run wo-mcp-server
+```
+
+Keep running (connects to CouchDB)
+
+### 2.6: Terminal 7 - Vibration Server
+
+```powershell
+cd C:\Users\yeshi\AssetOpsBench
+uv run vibration-mcp-server
+```
+
+Keep running
+
+### 2.7: Terminal 8 - Skills Server
 
 ```powershell
 cd C:\Users\yeshi\AssetOpsBench
@@ -143,78 +173,98 @@ $env:SKILL_BOOTSTRAP_INSTALL = "1"
 uv run skills-mcp-server
 ```
 
-**First run takes 15-30 seconds:**
-- Loads 150MB embedding model into memory
-- Extracts text from PDFs
-- Creates 384-dimensional vector embeddings
-- Builds ChromaDB collections
+Keep running
 
-**Expected output:**
-```
-Skill install state created at C:\Users\yeshi\.assetopsbench\skill_install_state.json
-Loading skill: pump_seal_inspection
-Loading skill: asset_diagnostics
-Loading skill: safety_check
-Starting Skills MCP server on stdio
-```
+### 2.8: Terminal 9 - Knowledge Server (NEW - SEPARATE!)
 
-✅ **All 6 servers running!** Move to Part 3.
-
----
-
-## 🧪 PART 3: TEST THE KNOWLEDGE PLUGIN
-
-Open **Terminal 7** for testing (keep the other 6 running).
-
-### 3.1: Test 1 - Pump Maintenance (Basic)
+**NEW in v2.0:** Knowledge server is now standalone for better scaling!
 
 ```powershell
 cd C:\Users\yeshi\AssetOpsBench
-uv run plan-execute "What are the pump seal inspection procedures?" --show-history
+uv run knowledge-mcp-server
 ```
 
-**What happens:**
-1. Agent discovers 6 running servers
-2. Plans to search knowledge plugin
-3. Knowledge plugin embeds your question (384-dim vector)
-4. ChromaDB finds similar chunks in "pump" collection
-5. Returns 2-3 relevant documents with similarity scores
-6. LLM summarizes into procedure steps
+First run takes 10-15 seconds (loads embedding model):
+- Loads 150MB embedding model into memory
+- Initializes ChromaDB collections
+- Extracts text from PDFs  
+- Creates 384-dimensional vector embeddings
 
-**Expected timing:** 40-50s first run, 30-35s after that
+**Expected output:**
+```
+Knowledge Plugin MCP Server initializing...
+Initializing ChromaDB collections...
+ChromaDB ready. All queries will be instant (<100ms)
+```
 
-**Result:** ✅ Pump procedures from documentation returned!
+**All 8 servers running!** Move to Part 3.
 
 ---
 
-### 3.2: Test 2 - Pump Failure Investigation (Multi-Server)
+## PART 3: TEST THE KNOWLEDGE PLUGIN WITH CITATIONS
+
+Open **Terminal 10** for testing (keep the other 9 running).
+
+### 3.1: Test 1 - Pump Maintenance (With Citations!)
 
 ```powershell
-uv run plan-execute "The pump is not working, what could be the reasons how can I start investigating this issue?" --show-history
+cd C:\Users\yeshi\AssetOpsBench
+uv run plan-execute "What are the pump seal inspection procedures?"
 ```
 
 **What happens:**
-1. Knowledge plugin searches for pump failure info
+1. Agent discovers all 9 running servers
+2. Plans to search knowledge plugin
+3. Knowledge plugin searches ChromaDB ("pump" collection)
+4. Returns full relevant documents with similarity scores
+5. LLM synthesizes into comprehensive answer
+6. **NEW:** Answer includes detailed procedures + source citations!
+
+**Expected output:**
+```
+The pump maintenance procedures include several key aspects...
+
+First, it's essential to follow general safety guidelines...
+[comprehensive procedures and details...]
+
+────────────────────
+Sources & Citations:
+────────────────────
+• maintenance_handbook.pdf - Page 1 (66% match)
+• pump_seal_inspection_manual.pdf - Page 3 (65% match)
+```
+
+**Result:** Detailed procedures returned with PDF citations!
+
+---
+
+### 3.2: Test 2 - Pump Failure Investigation (Multi-Server + Citations)
+
+```powershell
+uv run plan-execute "The pump is not working, what could be the reasons how can I start investigating this issue?"
+```
+
+**What happens:**
+1. Knowledge plugin searches for pump failure info  
 2. FMSR server provides pump failure modes
 3. IoT server checks live sensor data from CouchDB
 4. LLM combines all info into investigation steps
+5. **Citations show which PDF sources were used**
 
 **Expected result:**
 ```
 Possible failure modes:
   - Seal failure (wear, cavitation, misalignment)
   - Bearing failure (lack of lubrication)
-  - Impeller failure (cavitation, corrosion)
+  [detailed investigation steps...]
 
-Investigation steps:
-  1. Check vibration sensors
-  2. Monitor temperature
-  3. Check pressure output
-  4. Inspect seal condition
-  5. Review work orders
+Sources & Citations:
+────────────────────
+• maintenance_handbook.pdf - Page 5 (82% match)
+• pump_seal_inspection_manual.pdf - Page 2 (78% match)
 ```
 
-**Result:** ✅ Multi-server knowledge orchestration working!
+**Result:** Multi-server knowledge orchestration with citations!
 
 ---
 
@@ -224,7 +274,7 @@ Investigation steps:
 uv run plan-execute "How do I maintain a chiller?" --show-history
 ```
 
-**Result:** ✅ Chiller maintenance procedures from PDFs!
+**Result:** Chiller maintenance procedures from PDFs!
 
 ---
 
@@ -234,7 +284,7 @@ uv run plan-execute "How do I maintain a chiller?" --show-history
 uv run plan-execute "What are the safety procedures I should follow for motor maintenance?" --show-history
 ```
 
-**Result:** ✅ Motor safety documentation from knowledge plugin!
+**Result:** Motor safety documentation from knowledge plugin!
 
 ---
 
@@ -264,7 +314,7 @@ uv run plan-execute "What pump procedures are documented?" --json
 
 ---
 
-## 🎓 HOW THE KNOWLEDGE PLUGIN WORKS
+## HOW THE KNOWLEDGE PLUGIN WORKS
 
 ### Architecture Overview
 
@@ -346,13 +396,13 @@ uv run plan-execute "What pump procedures are documented?" --json
 ```
 
 **Key Performance Facts:**
-- ✅ Knowledge plugin search: **25-30ms** (extremely fast)
-- ⏱️ LLM inference: **5-10 seconds** (this is the bottleneck)
-- 💾 Total time: **30-40 seconds** after warmup
+- Knowledge plugin search: **25-30ms** (extremely fast)
+- LLM inference: **5-10 seconds** (this is the bottleneck)
+- Total time: **30-40 seconds** after warmup
 
 ---
 
-## 📊 WHAT'S ACTUALLY HAPPENING
+## WHAT'S ACTUALLY HAPPENING
 
 ### Embeddings
 
@@ -411,7 +461,7 @@ Store in ChromaDB collection "pump"
 
 ---
 
-## 🛠️ TROUBLESHOOTING
+## TROUBLESHOOTING
 
 ### Problem: "Connection refused" on port 5984
 
@@ -483,7 +533,7 @@ uv pip install chromadb sentence-transformers
 
 ---
 
-## 📝 EXAMPLE QUERIES YOU CAN TRY
+## EXAMPLE QUERIES YOU CAN TRY
 
 ### Knowledge Plugin Only (Fast)
 
@@ -529,7 +579,7 @@ plan-execute "What pump procedures are documented?" --json
 
 ---
 
-## 🔧 CONFIGURATION
+## CONFIGURATION
 
 ### Where Things Are Located
 
@@ -571,93 +621,6 @@ $env:VIBRATION_DBNAME = "vibration" # Optional: vibration data
 
 ---
 
-## 📈 PERFORMANCE CHARACTERISTICS
-
-### First Run (Cold Start)
-
-```
-Startup: 15-20 seconds
-  - Load embedding model: 4-8s
-  - Extract PDFs: 2-3s
-  - Create embeddings: 4-6s
-  - Build ChromaDB collections: 2-3s
-
-First query: 45-60 seconds
-  - Planning: 15-20s
-  - Knowledge search: 25-30ms
-  - LLM response generation: 15-25s
-  
-Subsequent queries: 30-40 seconds
-  - Planning: 10-15s (faster, caches warm)
-  - Knowledge search: 20-25ms
-  - LLM response: 15-25s
-```
-
-### Steady State (After Warmup)
-
-| Operation | Time |
-|-----------|------|
-| Knowledge plugin search | 19-21ms |
-| Single server response | 5-10 seconds |
-| Multi-server orchestration | 30-40 seconds |
-| CouchDB query (IoT data) | 50-200ms |
-
-### Resource Usage
-
-| Component | Usage |
-|-----------|-------|
-| Embedding model (in memory) | ~150-200MB RAM |
-| ChromaDB collections (disk) | ~50MB |
-| CouchDB databases (disk) | ~200-300MB |
-| Total memory (all 6 servers) | ~500MB-1GB |
-
----
-
-## ✅ VERIFICATION CHECKLIST
-
-After completing all steps, verify:
-
-- [ ] **Part 1 Complete:**
-  - [ ] CouchDB running on localhost:5984
-  - [ ] `chiller` database has 2,899 documents
-  - [ ] `workorder` database has 12,267 documents
-  
-- [ ] **Part 2 Complete (6 servers running):**
-  - [ ] Terminal 2: Utilities server running
-  - [ ] Terminal 3: IoT server connected to CouchDB
-  - [ ] Terminal 4: FMSR server running
-  - [ ] Terminal 5: TSFM server running
-  - [ ] Terminal 6: Skills server with knowledge plugin initialized
-  - [ ] No error messages in any terminal
-  
-- [ ] **Part 3 Complete (Tests passing):**
-  - [ ] Test 1: Pump maintenance returned documentation
-  - [ ] Test 2: Multi-server orchestration worked
-  - [ ] Test 3: Chiller maintenance returned results
-  - [ ] Test 4: Motor safety returned procedures
-  - [ ] Test 5: Show-plan displayed agent reasoning
-  - [ ] Test 6: JSON output was valid
-
-**All checked?** ✅ Knowledge plugin is fully operational!
-
----
-
-## 🎉 YOU'RE DONE!
-
-The knowledge plugin is now:
-- ✅ **Indexed** - 6 PDFs indexed into ChromaDB
-- ✅ **Searchable** - Semantic search in <25ms
-- ✅ **Integrated** - Working with 5 other MCP servers
-- ✅ **Tested** - Multiple queries verified working
-- ✅ **Documented** - Full guide (you're reading it!)
-
-### Next Steps
-
-1. **Experiment** - Try the example queries
-2. **Integrate** - Use in your own applications
-3. **Extend** - Add more PDFs to `packs/assetopsbench/pdfs/`
-4. **Monitor** - Check logs for performance insights
-
 ### How to Add More Documentation
 
 To add more maintenance procedures to the knowledge base:
@@ -674,34 +637,34 @@ To add more maintenance procedures to the knowledge base:
 
 ---
 
-## 📚 ARCHITECTURE DEEP DIVE
+## ARCHITECTURE DEEP DIVE
 
 ### Why ChromaDB?
 
-✅ **Persistent Storage** - Collections saved to disk  
-✅ **Auto-Optimization** - Handles batch sizing automatically  
-✅ **Simple API** - Just search(query, top_k, asset_type)  
-✅ **Fast** - Sub-30ms searches even on CPU  
-✅ **Scalable** - Can index millions of chunks  
+**Persistent Storage** - Collections saved to disk  
+**Auto-Optimization** - Handles batch sizing automatically  
+**Simple API** - Just search(query, top_k, asset_type)  
+**Fast** - Sub-30ms searches even on CPU  
+**Scalable** - Can index millions of chunks  
 
 ### Why Sentence-Transformers?
 
-✅ **No API Keys** - Runs locally, private  
-✅ **Fast** - Sub-20ms embeddings  
-✅ **Accurate** - 384 dimensions for semantic richness  
-✅ **Lightweight** - Only 150MB model size  
-✅ **Open Source** - Community maintained  
+**No API Keys** - Runs locally, private  
+**Fast** - Sub-20ms embeddings  
+**Accurate** - 384 dimensions for semantic richness  
+**Lightweight** - Only 150MB model size  
+**Open Source** - Community maintained  
 
 ### Why FastMCP?
 
-✅ **Standard Protocol** - MPC (Model Context Protocol)  
-✅ **Multi-Server** - Coordinate 6+ servers easily  
-✅ **LLM Integration** - Works with any LLM  
-✅ **Stdio Transport** - No complex networking  
+**Standard Protocol** - MPC (Model Context Protocol)  
+**Multi-Server** - Coordinate 6+ servers easily  
+**LLM Integration** - Works with any LLM  
+**Stdio Transport** - No complex networking  
 
 ---
 
-## 🚨 WHEN THINGS GO WRONG
+## WHEN THINGS GO WRONG
 
 ### Knowledge Plugin Returns No Results
 
@@ -758,7 +721,7 @@ python -c "from sentence_transformers import SentenceTransformer; SentenceTransf
 
 ---
 
-## 📞 SUPPORT
+## SUPPORT
 
 ### If something doesn't work:
 
@@ -779,7 +742,7 @@ python -c "from sentence_transformers import SentenceTransformer; SentenceTransf
 
 ---
 
-## 🎓 LEARNING MORE
+## LEARNING MORE
 
 ### Understand the Code
 
@@ -796,7 +759,7 @@ python -c "from sentence_transformers import SentenceTransformer; SentenceTransf
 
 ---
 
-## 🧪 RUNNING TESTS (For Developers)
+## RUNNING TESTS (For Developers)
 
 To verify knowledge plugin functionality, run the test suite:
 
@@ -826,28 +789,28 @@ pytest src/servers/knowledge/tests/test_knowledge.py -v
 ```
 
 **Use this for:**
-- ✅ Verifying setup after changes
-- ✅ CI/CD automation
-- ✅ Debugging indexing issues
-- ✅ Validating embedding model
+- Verifying setup after changes
+- CI/CD automation
+- Debugging indexing issues
+- Validating embedding model
 
 ---
 
-## 📝 THIS IS YOUR SINGLE SOURCE OF TRUTH
+## THIS IS YOUR SINGLE SOURCE OF TRUTH
 
 **This file contains EVERYTHING you need to:**
-- ✅ Understand how the knowledge plugin works
-- ✅ Set it up from scratch
-- ✅ Test all functionality
-- ✅ Troubleshoot problems
-- ✅ Extend with your own PDFs
-- ✅ Understand the architecture
-- ✅ Know performance characteristics
+- Understand how the knowledge plugin works
+- Set it up from scratch
+- Test all functionality
+- Troubleshoot problems
+- Extend with your own PDFs
+- Understand the architecture
+- Know performance characteristics
 
 **No other documentation files are needed.**
 
 ---
 
-**Version:** 1.0  
-**Last Updated:** April 9, 2026  
-**Status:** Complete & Tested ✅
+**Version:** 2.0 (with Citations!)  
+**Last Updated:** April 11, 2026  
+**Status:** Production Ready with Detailed Answers & Citations

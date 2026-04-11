@@ -36,8 +36,34 @@ Original question: {question}
 Step-by-step execution results:
 {results}
 
-Provide a concise, direct answer to the original question based on the results
-above. Do not repeat the individual steps — just give the final answer.
+Your task: Create a comprehensive, detailed answer to the original question. 
+
+IMPORTANT FORMATTING:
+1. Write a FULL, DETAILED explanation answering the user's question
+2. Include all relevant information, procedures, steps, and details
+3. Do NOT just list results - synthesize them into a coherent narrative
+4. At the END of your answer, add a "Sources & Citations" section that lists:
+   - Document name and page number for each source used
+   - Confidence/match percentage if available
+5. Format citations as:
+   ────────────────────
+   Sources & Citations:
+   ────────────────────
+   • Source: [PDF Name] - Page X (YY% match)
+   • Source: [PDF Name] - Pages X-Y (ZZ% match)
+
+Example answer structure:
+   "The pump maintenance procedures include:
+   1. Daily checks: ...
+   2. Weekly checks: ...
+   [detailed explanation]
+   
+   Sources & Citations:
+   ────────────────────
+   • Centrifugal Pump Seal Inspection Manual - Page 2 (87% match)
+   • pump_maintenance_handbook.pdf - Pages 5-7 (92% match)"
+
+Provide a complete answer based on the results above, with full details and citations at the end.
 """
 
 

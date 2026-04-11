@@ -48,6 +48,7 @@ DEFAULT_SERVER_PATHS: dict[str, Path | str] = {
     "wo": "wo-mcp-server",
     "vibration": "vibration-mcp-server",
     "skills": "skills-mcp-server",
+    "knowledge": "knowledge-mcp-server",
 }
 
 _PLACEHOLDER_RE = re.compile(r"\{step_(\d+)\}")

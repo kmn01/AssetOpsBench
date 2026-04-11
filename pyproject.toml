@@ -29,6 +29,9 @@ dependencies = [
     "litellm>=1.0",
     "python-dotenv>=1.0",
     "scipy>=1.10.0",
+    "chromadb>=1.3.5",
+    "pdfplumber>=0.10",
+    "sentence-transformers>=3.1.0",
 ]
 
 [project.scripts]
@@ -40,6 +43,7 @@ tsfm-mcp-server = "servers.tsfm.main:main"
 wo-mcp-server = "servers.wo.main:main"
 vibration-mcp-server = "servers.vibration.main:main"
 skills-mcp-server = "servers.skills.main:main"
+knowledge-mcp-server = "servers.knowledge.main:main"
 
 
 [dependency-groups]
