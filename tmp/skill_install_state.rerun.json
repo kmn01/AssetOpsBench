@@ -1,0 +1,7 @@
+{
+  "installed": [
+    "assetopsbench/pump_seal_inspection",
+    "assetopsbench_demo/asset_diagnostics_bundle",
+    "assetopsbench_demo/safety_clearance_check"
+  ]
+}

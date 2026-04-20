@@ -90,6 +90,24 @@ def flatten_benchmark_record_for_wandb(record: dict[str, Any]) -> dict[str, Any]
         if k in record and record[k] is not None:
             out[f"bench/{k}"] = record[k]
 
+    # Keep benchmark extensions visible in W&B without hard-coding every future key.
+    for k, v in record.items():
+        if v is None:
+            continue
+        if k.startswith("accuracy_"):
+            out[f"bench/{k}"] = v
+        elif k.startswith("context_"):
+            out[f"bench/{k}"] = v
+        elif k.startswith("token_"):
+            out[f"bench/{k}"] = v
+        elif k in (
+            "scenario_source",
+            "scenario_category",
+            "synthetic",
+            "synthetic_parent_id",
+        ):
+            out[f"bench/{k}"] = v
+
     q = record.get("question")
     if isinstance(q, str):
         out["bench/question_char_len"] = len(q)
