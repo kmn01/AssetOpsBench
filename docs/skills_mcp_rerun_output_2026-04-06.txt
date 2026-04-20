@@ -1,0 +1,100 @@
+=== AssetOpsBench Skills MCP rerun log ===
+Mon Apr  6 11:19:24 EDT 2026
+/Users/ton/Desktop/columbia-academic/courses/hpml/project/AssetOpsBench
+
+== Step 0: branch/status ==
+## dev...origin/dev
+?? docs/skills_mcp_rerun_output_2026-04-06.txt
+
+== Step 1: stop prior CouchDB stack ==
+ Container couchdb-couchdb-1  Stopping
+ Container couchdb-couchdb-1  Stopped
+ Container couchdb-couchdb-1  Removing
+ Container couchdb-couchdb-1  Removed
+ Network couchdb_default  Removing
+ Network couchdb_default  Removed
+
+== Step 2: dependency sync (doc prerequisite) ==
+uv 0.11.3 (Homebrew 2026-04-01 aarch64-apple-darwin)
+Resolved 155 packages in 24ms
+   Building assetopsbench-mcp @ file:///Users/ton/Desktop/columbia-academic/courses/hpml/project/AssetOpsBench
+      Built assetopsbench-mcp @ file:///Users/ton/Desktop/columbia-academic/courses/hpml/project/AssetOpsBench
+Prepared 1 package in 471ms
+Uninstalled 1 package in 2ms
+Installed 1 package in 3ms
+ ~ assetopsbench-mcp==0.1.0 (from file:///Users/ton/Desktop/columbia-academic/courses/hpml/project/AssetOpsBench)
+
+== Step 3: env file ==
+.env exists (kept as-is)
+
+== Step 4: start CouchDB and verify ==
+ Network couchdb_default  Creating
+ Network couchdb_default  Created
+ Container couchdb-couchdb-1  Creating
+ Container couchdb-couchdb-1  Created
+ Container couchdb-couchdb-1  Starting
+ Container couchdb-couchdb-1  Started
+NAME                IMAGE         COMMAND                  SERVICE   CREATED         STATUS                            PORTS
+couchdb-couchdb-1   couchdb:3.5   "tini -- /docker-ent…"   couchdb   4 seconds ago   Up 3 seconds (health: starting)   0.0.0.0:5984->5984/tcp, [::]:5984->5984/tcp
+{"couchdb":"Welcome","version":"3.5.1","git_sha":"44f6a43d8","uuid":"d16276336505db14ae6feb0554cdfb36","features":["access-ready","partitioned","pluggable-storage-engines","reshard","scheduler"],"vendor":{"name":"The Apache Software Foundation"}}
+
+== Step 5: skills server startup from repo root ==
+zsh:38: no such file or directory: tmp/skills_server_startup.log
+zsh:kill:41: kill 2935 failed: no such process
+ls: /Users/ton/Desktop/columbia-academic/courses/hpml/project/AssetOpsBench/tmp/skill_install_state.rerun.json: No such file or directory
+
+== Step 5 (retry): skills server startup from repo root ==
+zsh:kill:13: kill 3097 failed: no such process
+-rw-r--r--@ 1 ton  staff  166 Apr  6 11:19 /Users/ton/Desktop/columbia-academic/courses/hpml/project/AssetOpsBench/tmp/skill_install_state.rerun.json
+-- install state --
+{
+  "installed": [
+    "assetopsbench/pump_seal_inspection",
+    "assetopsbench_demo/asset_diagnostics_bundle",
+    "assetopsbench_demo/safety_clearance_check"
+  ]
+}
+-- skills server startup log (tail) --
+
+== Step 6: skills tests from docs ==
+============================= test session starts ==============================
+platform darwin -- Python 3.12.13, pytest-9.0.2, pluggy-1.6.0 -- /Users/ton/Desktop/columbia-academic/courses/hpml/project/AssetOpsBench/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /Users/ton/Desktop/columbia-academic/courses/hpml/project/AssetOpsBench
+configfile: pyproject.toml
+plugins: anyio-4.12.1
+collecting ... collected 27 items
+
+src/servers/skills/tests/test_registry.py::test_list_skill_items_includes_pump_fqid PASSED [  3%]
+src/servers/skills/tests/test_registry.py::test_coerce_skill_fqid_bare_suffix PASSED [  7%]
+src/servers/skills/tests/test_registry.py::test_get_manifest_accepts_bare_skill_id PASSED [ 11%]
+src/servers/skills/tests/test_registry.py::test_bootstrap_skipped_when_disabled PASSED [ 14%]
+src/servers/skills/tests/test_registry.py::test_bootstrap_creates_file_when_enabled PASSED [ 18%]
+src/servers/skills/tests/test_registry.py::test_bootstrap_does_not_overwrite_existing PASSED [ 22%]
+src/servers/skills/tests/test_registry.py::test_installed_and_runnable_default PASSED [ 25%]
+src/servers/skills/tests/test_registry.py::test_enabled_skills_allowlist_filters_runnable PASSED [ 29%]
+src/servers/skills/tests/test_registry.py::test_enabled_skills_allowlist_normalizes_bare_suffix PASSED [ 33%]
+src/servers/skills/tests/test_registry.py::test_read_installed_coerces_bare_ids PASSED [ 37%]
+src/servers/skills/tests/test_registry.py::test_enabled_skills_empty_no_extra_allowlist PASSED [ 40%]
+src/servers/skills/tests/test_registry.py::test_get_manifest_unknown PASSED [ 44%]
+src/servers/skills/tests/test_registry.py::test_get_manifest_shows_runnable_false_when_not_installed PASSED [ 48%]
+src/servers/skills/tests/test_registry.py::test_merge_duplicate_fqid_raises PASSED [ 51%]
+src/servers/skills/tests/test_runner.py::test_pump_skill_validates_required_arguments[asyncio] PASSED [ 55%]
+src/servers/skills/tests/test_runner.py::test_pump_skill_defaults_asset_name_from_asset_id[asyncio] PASSED [ 59%]
+src/servers/skills/tests/test_runner.py::test_not_runnable_when_uninstalled[asyncio] PASSED [ 62%]
+src/servers/skills/tests/test_runner.py::test_diagnostics_skill_with_fake_mcp[asyncio] PASSED [ 66%]
+src/servers/skills/tests/test_runner.py::test_safety_clearance_fail_when_no_sensors[asyncio] PASSED [ 70%]
+src/servers/skills/tests/test_runner.py::test_safety_clearance_accepts_site_and_asset_aliases[asyncio] PASSED [ 74%]
+src/servers/skills/tests/test_sibling_mcp.py::test_aclose_exits_session_then_stdio[asyncio] PASSED [ 77%]
+src/servers/skills/tests/test_sibling_mcp.py::test_aclose_idempotent[asyncio] PASSED [ 81%]
+src/servers/skills/tests/test_sibling_mcp.py::test_call_tool_after_aclose_raises[asyncio] PASSED [ 85%]
+src/servers/skills/tests/test_tools.py::TestListSkills::test_list_skills_returns_entries[asyncio] PASSED [ 88%]
+src/servers/skills/tests/test_tools.py::TestGetSkillManifest::test_known_skill[asyncio] PASSED [ 92%]
+src/servers/skills/tests/test_tools.py::TestGetSkillManifest::test_unknown_skill[asyncio] PASSED [ 96%]
+src/servers/skills/tests/test_tools.py::TestRunSkill::test_run_skill_pump_happy_path[asyncio] PASSED [100%]
+
+============================== 27 passed in 0.69s ==============================
+
+== Completed ==
+Mon Apr  6 11:20:01 EDT 2026
+Log file: docs/skills_mcp_rerun_output_2026-04-06.txt

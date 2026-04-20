@@ -152,6 +152,62 @@ uv run python benchmark/skill_knowledge/run_benchmark.py \
   --ids "401,404,405" \
 ```
 
+### 3b. Batch from Hugging Face dataset
+
+Uses `ibm-research/AssetOpsBench` directly and appends one JSONL record per row.
+
+```bash
+uv run python benchmark/skill_knowledge/run_benchmark.py \
+  --source hf \
+  --hf-dataset-name ibm-research/AssetOpsBench \
+  --hf-split train \
+  --output runs/hf_assetops_bench.jsonl \
+  --model-id watsonx/ibm/granite-3-3-8b-instruct
+```
+
+### 3c. Synthetic expansion for stress tests
+
+Creates synthetic paraphrases per scenario and logs `synthetic=true` records for controlled scale tests.
+
+```bash
+uv run python benchmark/skill_knowledge/run_benchmark.py \
+  --source hf \
+  --hf-dataset-name ibm-research/AssetOpsBench \
+  --hf-split train \
+  --synthetic-copies 2 \
+  --context-window-tokens 128000 \
+  --output runs/hf_assetops_with_synth.jsonl
+```
+
+Optional benchmark knobs:
+
+- `--synthetic-only` to run only generated rows
+- `--shuffle-seed` to randomize row order before `--limit`
+- `--accuracy-threshold` to set pass/fail threshold for heuristic accuracy score
+- `--context-window-tokens` to emit context utilization percentage
+
+### 3d. Strict LLM-as-judge (rubric grading)
+
+Switch accuracy scoring from heuristic overlap to a strict rubric-based judge call.
+
+```bash
+uv run python benchmark/skill_knowledge/run_benchmark.py \
+  --source hf \
+  --hf-dataset-name ibm-research/AssetOpsBench \
+  --hf-split train \
+  --accuracy-mode llm-judge \
+  --judge-model-id watsonx/ibm/granite-3-8b-instruct \
+  --judge-temperature 0.0 \
+  --judge-max-retries 2 \
+  --output runs/hf_assetops_llm_judge.jsonl
+```
+
+Accuracy modes:
+
+- `--accuracy-mode heuristic` keeps lexical token/keyword scoring
+- `--accuracy-mode llm-judge` uses strict rubric grading (`accuracy_pass` maps to strict pass)
+- `--accuracy-mode both` logs both judge and heuristic fields, while canonical `accuracy_*` fields follow strict judge output
+
 ### 4. Structured CLI output (includes `metrics`)
 
 ```bash
@@ -205,6 +261,40 @@ Each line is one object, roughly:
   "model_id": "",
   "scenario_id": null,
   "scenario_type": null,
+  "scenario_category": "",
+  "scenario_source": "local|hf",
+  "synthetic": false,
+  "synthetic_parent_id": null,
+  "accuracy_has_reference": true,
+  "accuracy_score": 0.0,
+  "accuracy_pass": false,
+  "accuracy_mode": "llm-judge",
+  "accuracy_token_f1": 0.0,
+  "accuracy_keyword_coverage": 0.0,
+  "accuracy_threshold": 0.55,
+  "accuracy_judge_valid": true,
+  "accuracy_judge_task_completion": true,
+  "accuracy_judge_data_retrieval_accuracy": true,
+  "accuracy_judge_generalized_result_verification": true,
+  "accuracy_judge_agent_sequence_correct": true,
+  "accuracy_judge_clarity_and_justification": true,
+  "accuracy_judge_hallucinations": false,
+  "accuracy_judge_strict_pass": true,
+  "accuracy_judge_score": 1.0,
+  "accuracy_judge_rationale": "",
+  "accuracy_judge_model_id": "watsonx/ibm/granite-3-8b-instruct",
+  "accuracy_judge_ms": 0.0,
+  "accuracy_judge_prompt_tokens": 0,
+  "accuracy_judge_completion_tokens": 0,
+  "accuracy_judge_total_tokens": 0,
+  "accuracy_judge_error": null,
+  "context_peak_prompt_tokens": 0,
+  "context_window_tokens": 128000,
+  "context_window_utilization_pct": 0.0,
+  "context_estimated_kib": 0.0,
+  "token_total_tokens": 0,
+  "token_prompt_tokens": 0,
+  "token_completion_tokens": 0,
   "git_sha": null,
   "error": null
 }
