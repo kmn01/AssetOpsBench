@@ -79,6 +79,29 @@ _OUTPUT_RE = re.compile(r"#ExpectedOutput(\d+):\s*(.+)")
 _DEP_NUM_RE = re.compile(r"#S(\d+)")
 
 
+def _parse_dependency_numbers(raw_dep: str) -> list[int]:
+    """Parse dependency references from planner output.
+
+    Accepts canonical ``#S1`` and tolerant fallbacks like ``#T1`` or ``1``.
+    """
+    # Canonical notation expected by prompt.
+    deps = [int(x) for x in re.findall(r"#S(\d+)", raw_dep, flags=re.IGNORECASE)]
+    if deps:
+        return deps
+
+    # Some models emit #T1 for task references; treat as equivalent.
+    deps = [int(x) for x in re.findall(r"#T(\d+)", raw_dep, flags=re.IGNORECASE)]
+    if deps:
+        return deps
+
+    # Final fallback: bare numbers (e.g. "1,2").
+    if re.fullmatch(r"[\d\s,;]+", raw_dep):
+        nums = [s for s in re.split(r"[\s,;]+", raw_dep) if s.strip()]
+        return [int(s) for s in nums]
+
+    return []
+
+
 def parse_plan(raw: str) -> Plan:
     """Parse an LLM-generated plan string into a Plan object."""
     tasks = {int(m.group(1)): m.group(2).strip() for m in _TASK_RE.finditer(raw)}
@@ -99,7 +122,7 @@ def parse_plan(raw: str) -> Plan:
         if raw_dep.lower() == "none":
             dependencies = []
         else:
-            dependencies = [int(x) for x in _DEP_NUM_RE.findall(raw_dep)]
+            dependencies = _parse_dependency_numbers(raw_dep)
 
             # Make sure dependency references only point to earlier valid steps.
             if not dependencies:
