@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Evaluation Metrics Dashboard</title>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <style>
+        body { font-family: -apple-system, Bli  nkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 40px; background: #f9f9f9; }
+        .container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); max-width: 1000px; margin: auto; }
+        .controls { display: flex; gap: 20px; margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid #eee; }
+        select { padding: 8px; border-radius: 4px; border: 1px solid #ccc; font-size: 14px; }
+        .source { margin: 8px 0 16px; color: #555; font-size: 14px; }
+        .source a { color: #0b63ce; text-decoration: none; }
+        .source a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Agent Evaluation Metrics</h2>
+    <div class="source">
+        Data source: <a href="runs/quick_one_rerun_4_20_26.jsonl" target="_blank" rel="noreferrer">quick_one_rerun_4_20_26.jsonl</a>
+    </div>
+    <div class="controls">
+        <div>
+            <label for="x-axis">X-Axis:</label>
+            <select id="x-axis">
+                <option value="e2e_ms">End-to-End Latency (ms)</option>
+                <option value="token_total_tokens">Total Tokens</option>
+                <option value="plan_steps">Steps Taken</option>
+                <option value="accuracy_score">Accuracy Score</option>
+            </select>
+        </div>
+        <div>
+            <label for="y-axis">Y-Axis:</label>
+            <select id="y-axis">
+                <option value="token_total_tokens">Total Tokens</option>
+                <option value="e2e_ms">End-to-End Latency (ms)</option>
+                <option value="plan_steps">Steps Taken</option>
+                <option value="accuracy_score">Accuracy Score</option>
+            </select>
+        </div>
+    </div>
+    <div id="plot"></div>
+</div>
+
+<script>
+    // Static data embedded from quick_one_rerun_4_20_26.jsonl.
+    const data = [
+        {"id": 401, "category": "Knowledge Query", "e2e_ms": 123203.877, "token_total_tokens": 39152, "plan_steps": 12, "accuracy_score": 0.295024},
+        {"id": 402, "category": "Data Retrieval", "e2e_ms": 36464.227, "token_total_tokens": 9275, "plan_steps": 4, "accuracy_score": 0.289286},
+        {"id": 403, "category": "Data Retrieval", "e2e_ms": 113602.109, "token_total_tokens": 27674, "plan_steps": 10, "accuracy_score": 0.219187},
+        {"id": 404, "category": "Composed Skill", "e2e_ms": 191122.847, "token_total_tokens": 62927, "plan_steps": 16, "accuracy_score": 0.148715},
+        {"id": 405, "category": "Composed Skill", "e2e_ms": 105176.65, "token_total_tokens": 11033, "plan_steps": 4, "accuracy_score": 0.20739},
+        {"id": 406, "category": "Composed Skill", "e2e_ms": 79536.186, "token_total_tokens": 18182, "plan_steps": 7, "accuracy_score": 0.167117},
+        {"id": 407, "category": "Multi-step discovery", "e2e_ms": 27816.866, "token_total_tokens": 7419, "plan_steps": 2, "accuracy_score": 0.194932},
+        {"id": 408, "category": "Diagnostic", "e2e_ms": 210193.613, "token_total_tokens": 29287, "plan_steps": 12, "accuracy_score": 0.311111},
+        {"id": 409, "category": "Benchmark framing", "e2e_ms": 35465.842, "token_total_tokens": 9080, "plan_steps": 2, "accuracy_score": 0.177311},
+        {"id": 410, "category": "Procedure (RAG placeholder)", "e2e_ms": 62379.324, "token_total_tokens": 12232, "plan_steps": 10, "accuracy_score": 0.159813}
+    ];
+
+    const axisTitles = {
+        'e2e_ms': 'Latency (ms)',
+        'token_total_tokens': 'Total Tokens',
+        'plan_steps': 'Steps Taken',
+        'accuracy_score': 'Accuracy Score'
+    };
+
+    function updatePlot() {
+        const xField = document.getElementById('x-axis').value;
+        const yField = document.getElementById('y-axis').value;
+
+        // Group data by category to create distinct colors/legends
+        const categories = [...new Set(data.map(d => d.category))];
+        const traces = categories.map(category => {
+            const catData = data.filter(d => d.category === category);
+            return {
+                x: catData.map(d => d[xField]),
+                y: catData.map(d => d[yField]),
+                mode: 'markers',
+                type: 'scatter',
+                name: category,
+                text: catData.map(d => `Scenario ID: ${d.id}<br>Acc: ${d.accuracy_score}`),
+                marker: { size: 12, line: { width: 1, color: 'white' } }
+            };
+        });
+
+        const layout = {
+            hovermode: 'closest',
+            xaxis: { title: axisTitles[xField] },
+            yaxis: { title: axisTitles[yField] },
+            plot_bgcolor: '#f9f9f9',
+            paper_bgcolor: 'white'
+        };
+
+        Plotly.newPlot('plot', traces, layout);
+    }
+
+    // Event listeners for dropdowns
+    document.getElementById('x-axis').addEventListener('change', updatePlot);
+    document.getElementById('y-axis').addEventListener('change', updatePlot);
+
+    // Initial render
+    updatePlot();
+</script>
+
+</body>
+</html>
