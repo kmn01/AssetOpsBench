@@ -85,6 +85,162 @@ uv run python benchmark/skill_knowledge/run_benchmark.py --help
 uv run python -m compileall benchmark/skill_knowledge/run_benchmark.py src/observability/benchmark_wandb.py
 ```
 
+## What Metrics Are Tested (and how they are calculated)
+
+Each benchmark row is one JSON object in a JSONL file. Metrics are grouped below.
+
+### A) Latency and time metrics
+
+- discover_ms
+  Time to discover tool/server capabilities before planning.
+- plan_ms
+  Time for planning LLM call to produce the plan.
+- execute_ms
+  Time to execute all plan steps (including arg-resolution LLM calls + MCP/tool calls).
+- summarize_ms
+  Time for final response generation.
+- e2e_ms
+  End-to-end wall clock for one scenario run.
+- phase_ms
+  Same phase timings grouped in one object.
+
+Step-level timing metrics (inside step_timings_ms):
+
+- arg_resolution_ms
+  Per-step time for converting task text to concrete tool arguments.
+- mcp_call_ms
+  Per-step time spent in MCP/tool invocation.
+- step_execute_ms
+  Calculated as arg_resolution_ms + mcp_call_ms when both are present.
+
+### B) Reliability and execution quality metrics
+
+- success
+  True when all executed steps succeed and at least one step exists.
+- plan_steps
+  Number of planned steps.
+- history_steps
+  Number of executed step records.
+- tool_calls_attempted
+  Count of steps that called a real tool (tool not equal to none/null/empty).
+- tool_calls_succeeded
+  Count of successful real tool calls.
+- failed_steps
+  Count of step records with errors.
+- error
+  First scenario-level error string (or harness_error on orchestration failure).
+
+### C) Token, context, and memory-proxy metrics
+
+Token usage blocks:
+
+- token_usage.plan
+  Prompt/completion/total tokens for planning call.
+- token_usage.execute_arg_resolution
+  Summed prompt/completion/total tokens over tool-argument resolution calls.
+- token_usage.summarize
+  Prompt/completion/total tokens for final summarization call.
+- token_usage.llm_totals
+  Sum across plan + execute_arg_resolution + summarize.
+
+Context/memory proxy fields:
+
+- context_peak_prompt_tokens
+  max(plan.prompt_tokens, summarize.prompt_tokens, execute_arg_resolution.prompt_tokens).
+- context_window_tokens
+  Value passed by context-window-tokens (or null if not set).
+- context_window_utilization_pct
+  Calculated as (context_peak_prompt_tokens / context_window_tokens) * 100, when context_window_tokens > 0.
+- context_estimated_kib
+  Rough estimate from token count: (context_peak_prompt_tokens * 4) / 1024.
+
+Convenience rollups:
+
+- token_total_tokens
+  token_usage.llm_totals.total_tokens
+- token_prompt_tokens
+  token_usage.llm_totals.prompt_tokens
+- token_completion_tokens
+  token_usage.llm_totals.completion_tokens
+
+### D) Accuracy metrics (heuristic mode)
+
+When accuracy-mode=heuristic:
+
+- accuracy_has_reference
+  True if characteristic_form exists for the scenario.
+- accuracy_token_f1
+  Token overlap F1 between candidate answer and characteristic_form.
+- accuracy_keyword_coverage
+  Fraction of reference keywords found in prediction.
+- accuracy_score
+  Calculated as 0.5 * accuracy_token_f1 + 0.5 * accuracy_keyword_coverage.
+- accuracy_pass
+  True when accuracy_score >= accuracy_threshold.
+
+### E) Accuracy metrics (strict llm-judge mode)
+
+When accuracy-mode=llm-judge (or both), strict rubric grading is computed from:
+
+- accuracy_judge_task_completion
+- accuracy_judge_data_retrieval_accuracy
+- accuracy_judge_generalized_result_verification
+- accuracy_judge_agent_sequence_correct
+- accuracy_judge_clarity_and_justification
+- accuracy_judge_hallucinations
+
+Strict pass rule:
+
+- accuracy_judge_strict_pass =
+  task_completion AND data_retrieval_accuracy AND generalized_result_verification AND
+  agent_sequence_correct AND clarity_and_justification AND (NOT hallucinations)
+
+Judge score:
+
+- accuracy_judge_score =
+  (task_completion + data_retrieval_accuracy + generalized_result_verification +
+   agent_sequence_correct + clarity_and_justification + (NOT hallucinations)) / 6
+
+Judge operation metadata:
+
+- accuracy_judge_model_id
+- accuracy_judge_ms
+- accuracy_judge_prompt_tokens
+- accuracy_judge_completion_tokens
+- accuracy_judge_total_tokens
+- accuracy_judge_valid
+- accuracy_judge_error
+- accuracy_judge_rationale
+
+Canonical accuracy fields in judge mode:
+
+- accuracy_score mirrors accuracy_judge_score
+- accuracy_pass mirrors accuracy_judge_strict_pass
+
+### F) Synthetic/scenario metadata metrics
+
+- scenario_source
+  local or hf.
+- scenario_category
+  Scenario category from input row.
+- synthetic
+  True for generated synthetic rows.
+- synthetic_parent_id
+  Original scenario id used to create synthetic variant.
+
+### G) Run-level summary printed at end
+
+The runner prints aggregate values after all rows complete:
+
+- count
+- success_rate
+- mean_e2e_ms
+- mean_accuracy_score
+- accuracy_pass_rate
+- mean_context_util_pct
+
+These are simple means over available per-row values (null values excluded).
+
 ## 5) Local scenario benchmark (baseline)
 
 ```bash
