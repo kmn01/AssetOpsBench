@@ -237,7 +237,7 @@ You are a strict industrial AI benchmark grader.
 Evaluate the CANDIDATE_ANSWER against the EXPECTED_REFERENCE for the QUESTION.
 
 Return ONLY valid JSON with the following schema:
-{
+{{
   "task_completion": true|false,
   "data_retrieval_accuracy": true|false,
   "generalized_result_verification": true|false,
@@ -245,7 +245,7 @@ Return ONLY valid JSON with the following schema:
   "clarity_and_justification": true|false,
   "hallucinations": true|false,
   "rationale": "short explanation"
-}
+}}
 
 Rules:
 - Use strict standards. Do not infer unstated facts.
