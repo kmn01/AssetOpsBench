@@ -259,6 +259,131 @@
             grid-column: span 2;
         }
 
+        .rationale-toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+        }
+
+        .rationale-toolbar .filter-hint {
+            margin: 0;
+        }
+
+        .rationale-legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin: 0 0 10px;
+        }
+
+        .rationale-legend-item {
+            font-size: 0.76rem;
+            color: #244253;
+            background: #eef5f9;
+            border: 1px solid #d7e2ea;
+            border-radius: 999px;
+            padding: 4px 8px;
+        }
+
+        .rationale-list {
+            display: grid;
+            gap: 10px;
+            max-height: 460px;
+            overflow: auto;
+            padding-right: 2px;
+        }
+
+        .rationale-item {
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            padding: 10px;
+            background: #fbfeff;
+        }
+
+        .rationale-item.fail {
+            border-left: 4px solid #e4632a;
+        }
+
+        .rationale-item.pass {
+            border-left: 4px solid #63b995;
+        }
+
+        .rationale-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 6px;
+            flex-wrap: wrap;
+        }
+
+        .rationale-id {
+            font-family: "IBM Plex Mono", monospace;
+            font-size: 0.88rem;
+            color: #15384a;
+        }
+
+        .rationale-status {
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            border: 1px solid #d3dee6;
+            background: #edf3f7;
+            color: #2f4454;
+        }
+
+        .rationale-status.fail {
+            background: #fff1e9;
+            color: #8f3812;
+            border-color: #f2c6b1;
+        }
+
+        .rationale-status.pass {
+            background: #eaf9f3;
+            color: #1b6b4f;
+            border-color: #b6e3d2;
+        }
+
+        .rationale-meta {
+            font-size: 0.8rem;
+            color: var(--muted);
+            margin-bottom: 6px;
+        }
+
+        .rationale-text {
+            margin: 0;
+            color: #1f3340;
+            font-size: 0.88rem;
+            line-height: 1.45;
+            white-space: pre-wrap;
+        }
+
+        .rationale-formula {
+            margin: 0 0 8px;
+            font-family: "IBM Plex Mono", monospace;
+            font-size: 0.78rem;
+            line-height: 1.4;
+            color: #244253;
+            background: #f2f7fa;
+            border: 1px solid #d8e3eb;
+            border-radius: 8px;
+            padding: 7px 8px;
+            overflow-x: auto;
+            white-space: nowrap;
+        }
+
+        .rationale-empty {
+            border: 1px dashed var(--line);
+            border-radius: 10px;
+            padding: 12px;
+            color: var(--muted);
+            background: #fafcfe;
+            font-size: 0.86rem;
+        }
+
         @keyframes fadeInUp {
             from {
                 opacity: 0;
@@ -423,6 +548,29 @@
             <h3>Server Call Counts</h3>
             <div id="plot-server-usage" class="plot"></div>
         </div>
+
+        <div class="panel span-2">
+            <h3>Judge Rationale Explorer</h3>
+            <div class="rationale-toolbar">
+                <div class="filter-hint">Uses the same category/scenario filters above. Default view focuses on failures.</div>
+                <div class="control-group" style="min-width: 230px;">
+                    <label for="rationale-view">Rationale View</label>
+                    <select id="rationale-view">
+                        <option value="failed" selected>Failed Scenarios Only</option>
+                        <option value="all">All Scenarios</option>
+                    </select>
+                </div>
+            </div>
+            <div class="rationale-legend">
+                <span class="rationale-legend-item"><strong>task</strong>: task_completion</span>
+                <span class="rationale-legend-item"><strong>data</strong>: data_retrieval_accuracy</span>
+                <span class="rationale-legend-item"><strong>verify</strong>: generalized_result_verification</span>
+                <span class="rationale-legend-item"><strong>seq</strong>: agent_sequence_correct</span>
+                <span class="rationale-legend-item"><strong>clarity</strong>: clarity_and_justification</span>
+                <span class="rationale-legend-item"><strong>not_hall</strong>: NOT hallucinations</span>
+            </div>
+            <div id="judge-rationale-list" class="rationale-list"></div>
+        </div>
     </div>
 </div>
 
@@ -505,6 +653,25 @@
             return "n/a";
         }
         return `${value.toFixed(digits)}%`;
+    }
+
+    function escapeHtml(value) {
+        return String(value)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/\"/g, "&quot;")
+            .replace(/'/g, "&#39;");
+    }
+
+    function judgeBit(value) {
+        if (value === true) {
+            return 1;
+        }
+        if (value === false) {
+            return 0;
+        }
+        return null;
     }
 
     function uniqValues(dataset, field) {
@@ -973,6 +1140,73 @@
         }, plotConfig);
     }
 
+    function renderJudgeRationales(dataset) {
+        const mode = document.getElementById("rationale-view").value;
+        const root = document.getElementById("judge-rationale-list");
+        const rows = mode === "failed"
+            ? dataset.filter(d => d.accuracy_pass === false)
+            : dataset.slice();
+
+        const sorted = rows.sort((a, b) => {
+            const passA = a.accuracy_pass ? 1 : 0;
+            const passB = b.accuracy_pass ? 1 : 0;
+            if (passA !== passB) {
+                return passA - passB;
+            }
+            return (a.accuracy_score ?? -1) - (b.accuracy_score ?? -1);
+        });
+
+        if (sorted.length === 0) {
+            root.innerHTML = `<div class="rationale-empty">No scenarios match the selected rationale view and filters.</div>`;
+            return;
+        }
+
+        root.innerHTML = sorted.map(d => {
+            const pass = d.accuracy_pass === true;
+            const statusText = pass ? "PASS" : "FAIL";
+            const statusClass = pass ? "pass" : "fail";
+            const acc = Number.isFinite(d.accuracy_score) ? fmt(d.accuracy_score, 3) : "n/a";
+            const task = judgeBit(d.accuracy_judge_task_completion);
+            const dataRetrieval = judgeBit(d.accuracy_judge_data_retrieval_accuracy);
+            const verification = judgeBit(d.accuracy_judge_generalized_result_verification);
+            const sequence = judgeBit(d.accuracy_judge_agent_sequence_correct);
+            const clarity = judgeBit(d.accuracy_judge_clarity_and_justification);
+            const hallucinations = judgeBit(d.accuracy_judge_hallucinations);
+            const notHall = hallucinations === null ? null : (hallucinations === 1 ? 0 : 1);
+
+            const terms = [task, dataRetrieval, verification, sequence, clarity, notHall];
+            const hasAllTerms = terms.every(v => Number.isFinite(v));
+            const computedJudgeScore = hasAllTerms
+                ? terms.reduce((sum, v) => sum + v, 0) / 6
+                : null;
+
+            const shownJudgeScore = Number.isFinite(d.accuracy_judge_score)
+                ? fmt(d.accuracy_judge_score, 3)
+                : "n/a";
+            const shownComputed = Number.isFinite(computedJudgeScore)
+                ? fmt(computedJudgeScore, 3)
+                : "n/a";
+
+            const termLabel = v => Number.isFinite(v) ? String(v) : "n/a";
+            const formulaText = `score=(task:${termLabel(task)} + data:${termLabel(dataRetrieval)} + verify:${termLabel(verification)} + seq:${termLabel(sequence)} + clarity:${termLabel(clarity)} + not_hall:${termLabel(notHall)})/6 = ${shownComputed} (reported=${shownJudgeScore})`;
+
+            const rationale = escapeHtml(d.accuracy_judge_rationale || "No judge rationale available.");
+            const question = escapeHtml(d.question || "n/a");
+            const category = escapeHtml(d.category || "Unknown");
+            return `
+                <article class="rationale-item ${statusClass}">
+                    <div class="rationale-head">
+                        <div class="rationale-id">Scenario ${d.id} - ${category}</div>
+                        <span class="rationale-status ${statusClass}">${statusText}</span>
+                    </div>
+                    <div class="rationale-meta">Accuracy: ${acc} | E2E: ${fmt(d.e2e_ms, 0)} ms | Question: ${question}</div>
+                    <p class="rationale-formula">${formulaText}</p>
+                    <p class="rationale-text">${rationale}</p>
+                </article>
+            `;
+        }).join("");
+    }
+
     function renderAll() {
         const activeData = getFilteredData();
         renderRunConfig(activeData);
@@ -988,12 +1222,14 @@
         renderGauges(activeData);
         renderStepHeatmap(activeData);
         renderToolAndServerUsage(activeData);
+        renderJudgeRationales(activeData);
     }
 
     document.getElementById("x-axis").addEventListener("change", renderAll);
     document.getElementById("y-axis").addEventListener("change", renderAll);
     document.getElementById("category-filter").addEventListener("change", renderAll);
     document.getElementById("scenario-filter").addEventListener("change", renderAll);
+    document.getElementById("rationale-view").addEventListener("change", renderAll);
     window.addEventListener("resize", () => {
         [
             "plot-scatter",
