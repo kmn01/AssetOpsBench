@@ -323,6 +323,7 @@ async def _llm_judge_eval(
             "accuracy_judge_completion_tokens": None,
             "accuracy_judge_total_tokens": None,
             "accuracy_judge_error": None,
+            "accuracy_judge_raw_output": None,
         }
 
     prompt = _JUDGE_RUBRIC_PROMPT.format(
@@ -331,6 +332,7 @@ async def _llm_judge_eval(
         answer=prediction,
     )
     last_error: str | None = None
+    last_raw: str | None = None
 
     for _ in range(max(1, judge_max_retries)):
         t0 = asyncio.get_running_loop().time()
@@ -340,6 +342,7 @@ async def _llm_judge_eval(
                 prompt,
                 judge_temperature,
             )
+            last_raw = raw
             elapsed_ms = round((asyncio.get_running_loop().time() - t0) * 1000.0, 3)
             parsed = _extract_json_object(raw)
             if parsed is None:
@@ -385,6 +388,7 @@ async def _llm_judge_eval(
                 "accuracy_judge_completion_tokens": usage.completion_tokens,
                 "accuracy_judge_total_tokens": usage.total_tokens,
                 "accuracy_judge_error": None,
+                "accuracy_judge_raw_output": raw,
             }
         except Exception as exc:  # pragma: no cover - provider/network runtime variability
             last_error = f"judge_exception: {exc}"
@@ -407,6 +411,7 @@ async def _llm_judge_eval(
         "accuracy_judge_completion_tokens": None,
         "accuracy_judge_total_tokens": None,
         "accuracy_judge_error": last_error,
+        "accuracy_judge_raw_output": last_raw,
     }
 
 
@@ -690,6 +695,7 @@ async def _run_one(
                 "scenario_source": scenario_row.get("scenario_source"),
                 "synthetic": bool(scenario_row.get("synthetic", False)),
                 "synthetic_parent_id": scenario_row.get("synthetic_parent_id"),
+                "candidate_answer": result.answer,
             }
         )
         rec.update(
@@ -747,6 +753,7 @@ async def _run_one(
                 "scenario_source": scenario_row.get("scenario_source"),
                 "synthetic": bool(scenario_row.get("synthetic", False)),
                 "synthetic_parent_id": scenario_row.get("synthetic_parent_id"),
+                "candidate_answer": None,
             }
         )
         rec.update(
