@@ -117,6 +117,8 @@ Step-level timing metrics (inside step_timings_ms):
 
 - success
   True when all executed steps succeed and at least one step exists.
+- candidate_answer
+  Raw final answer produced by the evaluated model for this scenario.
 - plan_steps
   Number of planned steps.
 - history_steps
@@ -211,6 +213,8 @@ Judge operation metadata:
 - accuracy_judge_valid
 - accuracy_judge_error
 - accuracy_judge_rationale
+- accuracy_judge_raw_output
+  Raw, unparsed text returned by the judge model before JSON extraction.
 
 Canonical accuracy fields in judge mode:
 
