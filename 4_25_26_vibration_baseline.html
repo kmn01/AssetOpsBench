@@ -383,6 +383,20 @@
             background: #f9fcfe;
         }
 
+        .rationale-characteristic {
+            margin: 0;
+            color: #1f3340;
+            font-size: 0.86rem;
+            line-height: 1.45;
+            white-space: pre-wrap;
+            max-height: 220px;
+            overflow: auto;
+            padding: 8px;
+            border: 1px solid #d8e3eb;
+            border-radius: 8px;
+            background: #f6faf3;
+        }
+
         .rationale-formula {
             margin: 0 0 8px;
             font-family: "IBM Plex Mono", monospace;
@@ -1228,6 +1242,7 @@
 
             const rationale = escapeHtml(d.accuracy_judge_rationale || "No judge rationale available.");
             const candidateAnswer = escapeHtml(d.candidate_answer || "No candidate answer captured.");
+            const characteristicForm = escapeHtml(d.characteristic_form || "No characteristic form captured.");
             const question = escapeHtml(d.question || "n/a");
             const category = escapeHtml(d.category || "Unknown");
             return `
@@ -1240,6 +1255,8 @@
                     <p class="rationale-formula">${formulaText}</p>
                     <p class="rationale-block-title">Candidate Answer</p>
                     <p class="rationale-candidate">${candidateAnswer}</p>
+                    <p class="rationale-block-title">Characteristic Form</p>
+                    <p class="rationale-characteristic">${characteristicForm}</p>
                     <p class="rationale-block-title">Judge Rationale</p>
                     <p class="rationale-text">${rationale}</p>
                 </article>
