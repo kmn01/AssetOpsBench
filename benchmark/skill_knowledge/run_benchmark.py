@@ -695,6 +695,7 @@ async def _run_one(
                 "scenario_source": scenario_row.get("scenario_source"),
                 "synthetic": bool(scenario_row.get("synthetic", False)),
                 "synthetic_parent_id": scenario_row.get("synthetic_parent_id"),
+                "characteristic_form": scenario_row.get("characteristic_form"),
                 "candidate_answer": result.answer,
             }
         )
@@ -753,6 +754,7 @@ async def _run_one(
                 "scenario_source": scenario_row.get("scenario_source"),
                 "synthetic": bool(scenario_row.get("synthetic", False)),
                 "synthetic_parent_id": scenario_row.get("synthetic_parent_id"),
+                "characteristic_form": scenario_row.get("characteristic_form"),
                 "candidate_answer": None,
             }
         )

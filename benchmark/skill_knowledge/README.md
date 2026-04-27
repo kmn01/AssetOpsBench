@@ -117,6 +117,8 @@ Step-level timing metrics (inside step_timings_ms):
 
 - success
   True when all executed steps succeed and at least one step exists.
+- characteristic_form
+  Scenario-level expected-answer reference copied from scenario inputs.
 - candidate_answer
   Raw final answer produced by the evaluated model for this scenario.
 - plan_steps
