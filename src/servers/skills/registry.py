@@ -46,6 +46,8 @@ class SkillRecord(BaseModel):
     asset_types: list[str] = Field(default_factory=list)
     keywords: list[str] = Field(default_factory=list)
     default_enabled: bool = True
+    skill_path: str | None = None
+    instructions: str | None = None
 
 
 class SkillListItem(BaseModel):
@@ -78,6 +80,8 @@ class SkillManifestView(BaseModel):
     default_enabled: bool
     installed: bool
     runnable: bool
+    skill_path: str | None = None
+    instructions: str | None = None
 
 
 class MarketplaceError(BaseModel):
@@ -177,6 +181,15 @@ def merge_pack_records() -> tuple[SkillRecord, ...]:
                     f"duplicate skill FQID {fqid!r} (first={seen[fqid]}, second={pack_dir})"
                 )
             seen[fqid] = pack_dir
+
+            skill_md = pack_dir / sid / "SKILL.md"
+            instructions = None
+            skill_path = None
+
+            if skill_md.is_file():
+                skill_path = str(skill_md)
+                instructions = skill_md.read_text(encoding="utf-8")
+
             out.append(
                 SkillRecord(
                     fqid=fqid,
@@ -188,6 +201,8 @@ def merge_pack_records() -> tuple[SkillRecord, ...]:
                     asset_types=list(row.asset_types),
                     keywords=list(row.keywords),
                     default_enabled=row.default_enabled,
+                    skill_path=skill_path,
+                    instructions=instructions,
                 )
             )
     return tuple(out)
@@ -450,5 +465,7 @@ def get_manifest_for_fqid(fqid: str) -> SkillManifestView | MarketplaceError:
             default_enabled=rec.default_enabled,
             installed=ins,
             runnable=run,
+            skill_path=rec.skill_path,
+            instructions=rec.instructions,
         )
     return MarketplaceError(error=f"unknown skill fqid: {fqid!r} (use full id pack/skill or list_skills)")
