@@ -4,9 +4,8 @@ This runner demonstrates traditional RAG approach:
   1. Retrieve chunks from knowledge base (same as Knowledge Plugin)
   2. Format chunks as LLM prompt
   3. Call LLM to generate answer
-  4. Measure performance (latency, tokens, cost)
 
-Usage for benchmarking:
+Command-line usage example:
   uv run plan-execute "What are the pump seal inspection procedures?" --rag-mode
 """
 
