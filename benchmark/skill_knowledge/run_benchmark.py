@@ -530,8 +530,58 @@ def _summarize_run(records: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
+def _detect_skills_runtime_metadata() -> dict[str, Any]:
+    """Inspect active skills server runtime so benchmark rows record implementation flavor."""
+    out: dict[str, Any] = {
+        "skills_runner_module": None,
+        "skills_runner_file": None,
+        "skills_markdown_runner_detected": False,
+        "skills_markdown_json_plan_detected": False,
+        "skills_catalog_md_count": None,
+        "skills_runtime_detection_error": None,
+    }
+
+    try:
+        from servers.skills import runner as skills_runner
+
+        runner_file = Path(getattr(skills_runner, "__file__", "")).resolve()
+        out.update(
+            {
+                "skills_runner_module": "servers.skills.runner",
+                "skills_runner_file": str(runner_file),
+                "skills_markdown_runner_detected": hasattr(skills_runner, "run_markdown_skill"),
+                "skills_markdown_json_plan_detected": hasattr(skills_runner, "_extract_json_plan"),
+            }
+        )
+    except Exception as exc:
+        out["skills_runtime_detection_error"] = f"import_runner_failed: {exc}"
+
+    try:
+        skills_root = _REPO_ROOT / "src" / "servers" / "skills" / "packs"
+        if skills_root.is_dir():
+            out["skills_catalog_md_count"] = sum(1 for _ in skills_root.rglob("SKILL.md"))
+    except Exception as exc:
+        if out["skills_runtime_detection_error"]:
+            out["skills_runtime_detection_error"] = (
+                f"{out['skills_runtime_detection_error']}; md_scan_failed: {exc}"
+            )
+        else:
+            out["skills_runtime_detection_error"] = f"md_scan_failed: {exc}"
+
+    return out
+
+
 def _build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description=__doc__)
+    p.add_argument(
+        "--runner-mode",
+        choices=("kp", "rag"),
+        default="kp",
+        help=(
+            "Execution strategy to benchmark: kp=Knowledge Plugin mode "
+            "(plan-execute orchestration), rag=traditional retrieval+LLM generation."
+        ),
+    )
     p.add_argument(
         "--scenarios",
         type=Path,
@@ -673,6 +723,8 @@ async def _run_one(
     judge_temperature: float,
     judge_max_retries: int,
     wandb_batch,
+    runner_mode: str,
+    skills_runtime_meta: dict[str, Any],
 ) -> dict[str, Any]:
     from agent.plan_execute.metrics import PlanExecuteMetrics, append_jsonl
 
@@ -696,8 +748,10 @@ async def _run_one(
                 "synthetic": bool(scenario_row.get("synthetic", False)),
                 "synthetic_parent_id": scenario_row.get("synthetic_parent_id"),
                 "candidate_answer": result.answer,
+                "runner_mode": runner_mode,
             }
         )
+        rec.update(skills_runtime_meta)
         rec.update(
             await _evaluate_accuracy(
                 question=result.question,
@@ -754,8 +808,10 @@ async def _run_one(
                 "synthetic": bool(scenario_row.get("synthetic", False)),
                 "synthetic_parent_id": scenario_row.get("synthetic_parent_id"),
                 "candidate_answer": None,
+                "runner_mode": runner_mode,
             }
         )
+        rec.update(skills_runtime_meta)
         rec.update(
             await _evaluate_accuracy(
                 question=text,
@@ -785,6 +841,7 @@ async def _amain() -> None:
 
     load_dotenv()
     args = _build_parser().parse_args()
+    from agent.plan_execute.rag_runner import RAGRunner
     from agent.plan_execute.runner import PlanExecuteRunner
     from llm.litellm import LiteLLMBackend
 
@@ -834,7 +891,12 @@ async def _amain() -> None:
     judge_llm = llm
     if args.accuracy_mode in ("llm-judge", "both"):
         judge_llm = LiteLLMBackend(model_id=args.judge_model_id)
-    runner = PlanExecuteRunner(llm=llm)
+    if args.runner_mode == "rag":
+        runner = RAGRunner(llm=llm)
+    else:
+        runner = PlanExecuteRunner(llm=llm)
+
+    skills_runtime_meta = _detect_skills_runtime_metadata()
 
     from observability.benchmark_wandb import WandbBenchmarkBatch
 
@@ -849,6 +911,7 @@ async def _amain() -> None:
         "context_window_tokens": args.context_window_tokens,
         "accuracy_threshold": args.accuracy_threshold,
         "accuracy_mode": args.accuracy_mode,
+        "runner_mode": args.runner_mode,
         "judge_model_id": args.judge_model_id,
         "judge_temperature": args.judge_temperature,
         "judge_max_retries": args.judge_max_retries,
@@ -878,6 +941,8 @@ async def _amain() -> None:
                 judge_temperature=args.judge_temperature,
                 judge_max_retries=args.judge_max_retries,
                 wandb_batch=wb,
+                runner_mode=args.runner_mode,
+                skills_runtime_meta=skills_runtime_meta,
             )
             records.append(rec)
 
