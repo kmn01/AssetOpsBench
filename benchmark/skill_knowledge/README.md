@@ -20,6 +20,18 @@ Use a custom env file:
 uv run python benchmark/skill_knowledge/run_all_benchmarks.py --env-file .env
 ```
 
+## Single command for KP vs RAG + dashboard build
+
+```bash
+uv run python benchmark/skill_knowledge/run_kp_rag_comparison.py \
+  --model-id watsonx/ibm/granite-3-8b-instruct \
+  --judge-model-id watsonx/ibm/granite-3-8b-instruct \
+  --include-jsonl runs/LLM_judge_4_23_26_pump_baseline.jsonl
+```
+
+This runs full local pump scenarios in both `kp` and `rag` modes with strict
+LLM-judge scoring, then rebuilds the dashboard HTML automatically.
+
 Useful variants:
 
 ```bash
@@ -232,6 +244,23 @@ Canonical accuracy fields in judge mode:
 - synthetic_parent_id
   Original scenario id used to create synthetic variant.
 
+### F2) Retrieval strategy and skills runtime metadata
+
+- runner_mode
+  Strategy used for the row: `kp` (Knowledge Plugin plan-execute path) or `rag` (traditional retrieval + LLM generation path).
+- skills_runner_module
+  Active skills runner module name used by the server import path.
+- skills_runner_file
+  Resolved file path of the active skills runner module.
+- skills_markdown_runner_detected
+  True when the active skills runner exposes markdown execution (`run_markdown_skill`).
+- skills_markdown_json_plan_detected
+  True when the active skills runner exposes fenced-JSON execution plan parsing.
+- skills_catalog_md_count
+  Count of discovered `SKILL.md` files in bundled skill packs.
+- skills_runtime_detection_error
+  Runtime detection/import error text (null on success).
+
 ### G) Run-level summary printed at end
 
 The runner prints aggregate values after all rows complete:
@@ -263,6 +292,36 @@ uv run python benchmark/skill_knowledge/run_benchmark.py \
   --scenarios src/scenarios/local/pump_maintenance_utterance.json \
   --ids "401,404,405" \
   --output runs/pump_bench_local_ids.jsonl \
+  --model-id watsonx/ibm/granite-3-8b-instruct
+```
+
+## 6b) KP vs RAG comparison benchmark (same scenarios, same model)
+
+Knowledge Plugin mode:
+
+```bash
+uv run python benchmark/skill_knowledge/run_benchmark.py \
+  --source local \
+  --scenarios src/scenarios/local/pump_maintenance_utterance.json \
+  --ids "409,410" \
+  --runner-mode kp \
+  --accuracy-mode llm-judge \
+  --judge-model-id watsonx/ibm/granite-3-8b-instruct \
+  --output runs/pump_kp_vs_rag_kp.jsonl \
+  --model-id watsonx/ibm/granite-3-8b-instruct
+```
+
+Traditional RAG mode:
+
+```bash
+uv run python benchmark/skill_knowledge/run_benchmark.py \
+  --source local \
+  --scenarios src/scenarios/local/pump_maintenance_utterance.json \
+  --ids "409,410" \
+  --runner-mode rag \
+  --accuracy-mode llm-judge \
+  --judge-model-id watsonx/ibm/granite-3-8b-instruct \
+  --output runs/pump_kp_vs_rag_rag.jsonl \
   --model-id watsonx/ibm/granite-3-8b-instruct
 ```
 
@@ -403,6 +462,18 @@ Extract key fields (if jq installed):
 
 ```bash
 tail -n 1 runs/hf_assetops_llm_judge.jsonl | jq '{success, e2e_ms, accuracy_mode, accuracy_pass, accuracy_score, accuracy_judge_strict_pass, context_window_utilization_pct}'
+```
+
+## 14b) Build dashboard from arbitrary JSONL files
+
+```bash
+uv run python benchmark/skill_knowledge/build_dashboard.py \
+  --template eval_dashboard_llm_judge_4_23_26_pump_baseline.html \
+  --output eval_dashboard_llm_judge_4_23_26_pump_baseline.html \
+  --inputs \
+    runs/LLM_judge_4_23_26_pump_baseline.jsonl \
+    runs/pump_kp_vs_rag_kp_full.jsonl \
+    runs/pump_kp_vs_rag_rag_full.jsonl
 ```
 
 ## 15) Recommended reproducible run (balanced)
