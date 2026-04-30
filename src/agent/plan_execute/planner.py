@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 import re
+import json
 
 from llm import LLMBackend
 from llm.usage import CompletionUsage
@@ -34,18 +35,22 @@ Output format — one block per step, exactly:
 #Task1: <task description>
 #Server1: <exact server name from the list above>
 #Tool1: <exact tool name, or "none" if no tool call is needed>
+#Arguments1: <raw JSON object, or {{}}>
 #Dependency1: None
 #ExpectedOutput1: <what this step should produce>
 
 #Task2: <task description>
 #Server2: <exact server name from the list above>
 #Tool2: <exact tool name>
+#Arguments1: <raw JSON object, or {{}}>
 #Dependency2: #S1
 #ExpectedOutput2: <what this step should produce>
 
 Rules:
 - #ServerN must be one of: {valid_servers}
 - #ToolN must exactly match a tool listed under that server, or be the literal none (no quotes in the server line).
+- #ArgumentsN must be valid raw JSON. For no-arg tools, use {{}}.
+- For skills.run_skill, use {{"skill_id":"pack/skill","arguments":{{...}}}}.
 - Dependencies use #S<N> notation (e.g., #S1, #S2). Use "None" if none.
 - Keep tasks specific and actionable.
 {skills_rule}
@@ -77,6 +82,7 @@ _TOOL_RE = re.compile(r"#Tool(\d+):\s*(.+)")
 _DEP_RE = re.compile(r"#Dependency(\d+):\s*(.+)")
 _OUTPUT_RE = re.compile(r"#ExpectedOutput(\d+):\s*(.+)")
 _DEP_NUM_RE = re.compile(r"#S(\d+)")
+_ARGS_RE = re.compile(r"#Arguments(\d+):\s*(.+)")
 
 
 def _parse_dependency_numbers(raw_dep: str) -> list[int]:
@@ -112,6 +118,10 @@ def parse_plan(raw: str) -> Plan:
         int(m.group(1)): m.group(2).strip().split("(")[0].strip()
         for m in _TOOL_RE.finditer(raw)
     }
+    args_raw = {
+        int(m.group(1)): m.group(2).strip()
+        for m in _ARGS_RE.finditer(raw)
+    }
     deps_raw = {int(m.group(1)): m.group(2).strip() for m in _DEP_RE.finditer(raw)}
     outputs = {int(m.group(1)): m.group(2).strip() for m in _OUTPUT_RE.finditer(raw)}
 
@@ -133,6 +143,12 @@ def parse_plan(raw: str) -> Plan:
                     raise ValueError(
                         f"Invalid dependency reference for step {n}: #S{dep}"
                     )
+        try:
+            tool_args = json.loads(args_raw.get(n, "{}"))
+            if not isinstance(tool_args, dict):
+                tool_args = {}
+        except json.JSONDecodeError:
+            tool_args = {}
 
         steps.append(
             PlanStep(
@@ -140,7 +156,7 @@ def parse_plan(raw: str) -> Plan:
                 task=tasks[n],
                 server=servers.get(n, ""),
                 tool=tools.get(n, ""),
-                tool_args={},
+                tool_args=tool_args,
                 dependencies=dependencies,
                 expected_output=outputs.get(n, ""),
             )
