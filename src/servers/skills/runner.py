@@ -113,7 +113,10 @@ def _extract_json_plan(markdown: str) -> dict[str, Any]:
 
 def _substitute_args(value: Any, runtime_args: dict[str, Any]) -> Any:
     if isinstance(value, str) and value.startswith("$"):
-        return runtime_args.get(value[1:])
+        key = value[1:]
+        if key not in runtime_args or runtime_args[key] is None:
+            raise ValueError(f"Missing required skill argument: {key}")
+        return runtime_args[key]
     if isinstance(value, dict):
         return {k: _substitute_args(v, runtime_args) for k, v in value.items()}
     if isinstance(value, list):
