@@ -21,6 +21,8 @@ _DEFAULT_MODEL = "watsonx/meta-llama/llama-4-maverick-17b-128e-instruct-fp8"
 _LOG_FORMAT = "%(asctime)s  %(levelname)-8s  %(name)s  %(message)s"
 _LOG_DATE_FORMAT = "%H:%M:%S"
 
+_log = logging.getLogger(__name__)
+
 
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
@@ -45,8 +47,6 @@ environment variables:
 
   MCP_CLIENT_TIMEOUT_SEC  Max seconds for each MCP connect / list_tools / call_tool
                           in plan-execute (default in code: 600). Raises TimeoutError if exceeded.
-
-  WandB (optional): see docs/WandB_Integration.md — WANDB_ENABLED, WANDB_PROJECT, etc.
 
 examples:
   plan-execute "What assets are at site MAIN?"
@@ -102,11 +102,12 @@ examples:
         help="Suppress progress logs (WARNING and above only on stderr).",
     )
     parser.add_argument(
-        "--benchmark-jsonl",
-        metavar="PATH",
+        "--rag-mode",
+        action="store_true",
         help=(
-            "Append one JSON line with phase timings and tool-call counts after each run "
-            "(see docs/Skills_Server_Benchmarking.md)."
+            "Use traditional RAG (Retrieval-Augmented Generation) instead of plan-execute. "
+            "Retrieves chunks then calls LLM for generation. Use to benchmark vs Knowledge Plugin. "
+            "Example: plan-execute 'What are pump procedures?' --rag-mode --show-history"
         ),
     )
     return parser
@@ -176,35 +177,20 @@ def _print_section(title: str) -> None:
 
 async def _run(args: argparse.Namespace) -> None:
     from agent.plan_execute.runner import PlanExecuteRunner
+    from agent.plan_execute.rag_runner import RAGRunner
 
     llm = _build_llm(args.model_id)
     server_paths = _parse_servers(args.servers)
-    runner = PlanExecuteRunner(llm=llm, server_paths=server_paths)
+
+    # Choose runner based on mode
+    if args.rag_mode:
+        _log.info("Using traditional RAG mode (retrieval + LLM generation)")
+        runner = RAGRunner(llm=llm, server_paths=server_paths)
+    else:
+        _log.info("Using Knowledge Plugin mode (retrieval only, no LLM generation)")
+        runner = PlanExecuteRunner(llm=llm, server_paths=server_paths)
+
     result = await runner.run(args.question)
-
-    if result.metrics is not None:
-        from agent.plan_execute.metrics import append_jsonl
-        from observability.benchmark_wandb import (
-            log_plan_execute_benchmark_if_configured,
-            should_emit_plan_execute_wandb,
-        )
-
-        bench_rec = result.metrics.to_benchmark_record(
-            question=result.question,
-            model_id=args.model_id,
-        )
-        if args.benchmark_jsonl:
-            append_jsonl(args.benchmark_jsonl, bench_rec)
-        if should_emit_plan_execute_wandb(
-            wrote_benchmark_jsonl=bool(args.benchmark_jsonl),
-        ):
-            extra: dict = {}
-            if args.benchmark_jsonl:
-                extra["benchmark_jsonl_path"] = str(args.benchmark_jsonl)
-            log_plan_execute_benchmark_if_configured(
-                bench_rec,
-                extra_config=extra or None,
-            )
 
     if args.output_json:
         output = {
