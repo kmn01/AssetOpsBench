@@ -19,7 +19,7 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument(
         "--scenarios",
         type=Path,
-        default=REPO_ROOT / "src" / "scenarios" / "local" / "pump_maintenance_utterance.json",
+        default=REPO_ROOT / "src" / "scenarios" / "local" / "vibration_utterance.json",
         help="Scenario JSON file used for both KP and RAG runs.",
     )
     p.add_argument(
