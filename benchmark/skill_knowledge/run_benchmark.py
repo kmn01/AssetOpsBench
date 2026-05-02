@@ -585,7 +585,7 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument(
         "--scenarios",
         type=Path,
-        default=_REPO_ROOT / "src/scenarios/local/pump_maintenance_utterance.json",
+        default=_REPO_ROOT / "src/scenarios/local/vibration_utterance.json",
         help="Scenario JSON array (id, type, text, ...).",
     )
     p.add_argument(
