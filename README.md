@@ -1,339 +1,360 @@
-<div align="center">
+# HPML Final Project: AssetOpsBench MCP Skills Server
 
-# AI Agents for Industrial Asset Operations & Maintenance
-
-![AssetOps](https://img.shields.io/badge/Domain-Asset_Operations-blue) 
-![MultiAgentBench](https://img.shields.io/badge/Domain-Multi--agent_Bench-blue) 
-![EMNLP 2025](https://img.shields.io/badge/EMNLP--2025-Accepted-blueviolet)
-![NeurIPS 2025](https://img.shields.io/badge/NeurIPS--2025-Accepted-blueviolet)
-![AAAI 2026](https://img.shields.io/badge/AAAI--2026-Accepted-blueviolet)
-
-**📘 Tutorials:** Learn more from our detailed guides —  
-[ReActXen IoT Agent (EMNLP 2025)](https://github.com/IBM/ReActXen/blob/main/docs/tutorial/ReActXen_IoT_Agent_EMNLP_2025.pdf) | 
-[FailureSensorIQ (NeurIPS 2025)](https://github.com/IBM/FailureSensorIQ) |
-[AssetOpsBench Lab (AAAI 2026)](https://ibm.github.io/AssetOpsBench/aaaiwebsite/) |
-[Spiral (AAAI 2026)](https://github.com/IBM/SPIRAL) |
-[AssetOpsBench Technical Material](./docs/tutorial/AssetOpsBench_Technical_Material.pdf)
-
-📄 [Paper](https://arxiv.org/pdf/2506.03828) | 🤗 [HF-Dataset](https://huggingface.co/datasets/ibm-research/AssetOpsBench) | 📢 [IBM Blog](https://research.ibm.com/blog/asset-ops-benchmark) | 🤗 [HF Blog](https://huggingface.co/blog/ibm-research/assetopsbench-playground-on-hugging-face) | [Contributors](#contributors)
-
-[![Kaggle](https://img.shields.io/badge/Kaggle-Benchmark-blue?logo=kaggle&logoColor=white&style=flat-square)](https://www.kaggle.com/benchmarks/ibm-research/asset-ops-bench)
-[![Hugging Face](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Playground-orange?style=flat-square)](https://huggingface.co/spaces/ibm-research/AssetOps-Bench)
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/IBM/AssetOpsBench/blob/main/notebook/LLM_Agent.ipynb)
-</div>
+> **Course:** High Performance Machine Learning
+> **Semester:** Spring 2026
+> **Instructor:** Dr. Kaoutar El Maghraoui
 
 ---
 
-## 📢 Call for Scenario Contribution
-We are expanding **AssetOpsBench** to cover a broader range of industrial challenges. We invite researchers and practitioners to contribute new scenarios, particularly in the following areas:
+## Team Information
 
-* **Asset Classes:** Turbines, HVAC Systems, Pumps, Transformers, CNC Machines, Robotics, Engines, and so on.
-* **Task Domains:** Prognostics and Health Management, Remaining Useful Life (RUL) estimation, or Root Cause Analysis (RCA), Diagnostic Analysis and Predictive Maintenance.
+- **Team Name:** Team 3
+- **Members:**
+  - Yeshitha Bhuvanesh (yb2649) — *Knowledge Plugin / ChromaDB RAG implementation*
+  - Andrew Li (ayl2159) — *Benchmark execution, vibration baseline and dashboard*
+  - Trisha Maturi (tm3530) — *Markdown-Based Skills MCP server architecture*
+  - Kirthana Natarajan (kmn2161) — *Skills MCP server architecture*
+  - Thai On (tqo2101) — *Benchmark execution and dashboards*
 
-**How to contribute:**
-1.  **Define** your scenario following our [Utterance Guideline](https://github.com/IBM/AssetOpsBench/blob/extra_scenarios/experimental_scenarios/utterance_design_guideline.md), 
-[Ground Truth Guideline](https://github.com/IBM/AssetOpsBench/blob/extra_scenarios/experimental_scenarios/ground_truth_creation_best_practice.md)
+## Submission
 
-1.  **Explore** the [Hugging Face dataset](https://huggingface.co/datasets/ibm-research/AssetOpsBench) as examples.
-3.  **Submit** a Pull Request or open an [Issue](https://github.com/IBM/AssetOpsBench/issues) with the tag `new-scenario`.
-4. **Contact us** via email if any question:
-   * Dhaval Patel ([pateldha@us.ibm.com](mailto:pateldha@us.ibm.com))
-   * Nianjun Zhou ([jzhou@us.ibm.com](mailto:jzhou@us.ibm.com))
+- **GitHub repository:** [https://github.com/kmn01/AssetOpsBench/tree/dev](https://github.com/kmn01/AssetOpsBench/tree/dev)
+- **Final report:** [`deliverables/HPML_Final_Report.pdf`](deliverables/HPML_Final_Report.pdf)
+- **Final presentation:** [`deliverables/HPML_Final_Presentation.pptx`](deliverables/HPML_Final_Presentation.pptx)
+- **Experiment-tracking dashboard:** [link to public Wandb / MLflow / TensorBoard / Comet / Neptune dashboard]
 
----
-
-## Resources
-- **Video Overview:** [AssetOpsBench - AI Agents for Industrial Asset Operations & Maintenance](https://www.youtube.com/watch?v=kXmBDMrKFjs) by Reliability Odyssey.
-  
----
-
-## 📑 Table of Contents
-1. [Announcements](#announcements)
-2. [Introduction](#introduction)
-3. [Datasets](#datasets-140-scenarios)
-4. [AI Agents](#ai-agents)
-5. [Multi-Agent Frameworks](#multi-agent-frameworks)
-6. [System Diagram](#system-diagram)
-7. [Leaderboards](#leaderboards)
-8. [Docker Setup](#run-assetopsbench-in-docker)
-9. [Talks & Events](#talks--events)
-10. [External Resources](#external-resources)
-11. [Contributors](#contributors)
+The final report PDF and the presentation file are checked into the `deliverables/` folder of this repository **and** uploaded to CourseWorks.
 
 ---
 
-## Announcements (Papers, Invited Talks, etc) 
+## 1. Problem Statement
 
-- 📊 **Dataset Update:** **AssetOpsBench** expanded to cover wider variety of 9 Asset classes (Chiller, AHU, Pump, Motor, Bearing, Engine, Rotors, Boilers, Turbine, etc.) and various Tasks (Remaining Useful Life, Fault Classification, Rule Monitoring, etc.) <br>![Hugging Face](https://img.shields.io/badge/HuggingFace-AssetOpsBench-yellow?logo=huggingface)
-[![Dataset](https://img.shields.io/badge/Dataset-ibm--research%2FAssetOpsBench-blue)](https://huggingface.co/datasets/ibm-research/AssetOpsBench)
-<br>Special Thanks to primary **Contributors:** 👥 [@DeveloperMindset123](https://github.com/DeveloperMindset123), [@ChathurangiShyalika](https://github.com/ChathurangiShyalika), [@Fabio-Lorenzi1](https://github.com/Fabio-Lorenzi1)
+This project extends AssetOpsBench, a framework for developing, orchestrating, and evaluating AI agents for industrial asset operations and maintenance. We focus on two inference-time workstreams: improving multi-tool orchestration through an MCP Skills Server, and benchmarking a domain-specific Knowledge Plugin against traditional ChromaDB/RAG-style retrieval.
 
-- 📰 **AAAI-2026:** **SPIRAL: Symbolic LLM Planning via Grounded and Reflective Search** ![Authors](https://img.shields.io/badge/Authors-Y_Zhang,_G_Ganapavarapu,_S_Jayaraman,_B_Agrawal,_D_Patel,_A_Fokoue-lightgrey)  
-[![Code](https://img.shields.io/badge/Code-IBM%2FSPIRAL-blue?logo=github)](https://github.com/IBM/SPIRAL)
-
-- 🎯 **AAAI-2026 Lab:** **From Inception to Productization: Hands-on Lab for the Lifecycle of Multimodal Agentic AI in Industry 4.0**  
-[![Website](https://img.shields.io/badge/Website-Agents_for_Industry_4.0_Applications-brightgreen)](https://ibm.github.io/AssetOpsBench/aaaiwebsite/)
-![Authors](https://img.shields.io/badge/Authors-Chathurangi_Shyalika,_Saumya_Ahuja,_Shuxin_Lin,_Ruwan_Wickramarachchi,_Dhaval_Patel,_Amit_Sheth-lightgrey)
-[![AAAI 2026 Slides](https://img.shields.io/badge/AAAI-Slides-red)](https://drive.google.com/file/d/16GaYxBQ2FsVqKpkKOU0PI_ZCTCsowenF/view?usp=sharing)
-
-- 📰 **AABA4ET/AAAI-2026:** **Agentic Code Generation for Heuristic Rules in Equipment Monitoring**
-![Authors](https://img.shields.io/badge/Authors-F_Lorenzi,_A_Langbridge,_F_O%27Donncha,_J_Rayfield,_B_Eck,_S_Rosato-lightgrey)
-
-- 📰 **IAAI/AAAI-2026:** **Diversity Meets Relevancy: Multi-Agent Knowledge Probing for Industry 4.0 Applications**
-![Authors](https://img.shields.io/badge/Authors-C_Constantinides,_D_Patel,_S_Kimbleton,_N_Garg,_M_Paracha-lightgrey)
-
-- 📰 **IAAI/AAAI-2026:** **Deployed AI Agents for Industrial Asset Management: CodeReAct Framework for Event Analysis and Work Order Automation**
-![Authors](https://img.shields.io/badge/Authors-N_Zhou,_D_Patel,_A_Bhattacharyya-lightgrey)
-  
-- 📰 **AAAI-2026 Demo:** **AssetOpsBench-Live: Privacy-Aware Online Evaluation of Multi-Agent Performance in Industrial Operations**   
-  ![Authors](https://img.shields.io/badge/Authors-Dhaval_C_Patel,_Nianjun_Zhou,_Shuxin_Lin,_James_T_Rayfield,_Chathurangi_Shyalika,_Suryanarayana_R_Yarrabothula-lightgrey)
-[![Demo Video](https://img.shields.io/badge/Demo-Video-red)](https://www.youtube.com/watch?v=JcKlS5v5fGY)
-
-- 📰 **NeurIPS-2025 Social — Evaluating Agentic Systems**  
-  **Talk:** *Building Reliable Agentic Benchmarks: Insights from AssetOpsBench*
-  **Total Registered Users:** *2000+*
-  [![Conference](https://img.shields.io/badge/Conference-NeurIPS_2025-4B0082)](#)  
-  [![Speaker](https://img.shields.io/badge/Speaker-Dhaval_C_Patel-lightgrey)](#)  
-  [![Attend on Luma](https://img.shields.io/badge/Attend_on_Luma-Click_to_Register-blue?logo=google-calendar)](https://luma.com/mkyyvypm?tk=AkGVp5)
-  
-- 🕓 **Past Event:** **2025-10-03** – 2-Hour Workshop: *AI Agents and Their Role in Industry 4.0 Applications*  
-  ![Event](https://img.shields.io/badge/Event-Workshop-lightblue) 
-  ![Host](https://img.shields.io/badge/Host-NJIT_ACM-brightgreen)
-  
-- 🏆 **Accepted Papers**: Parts of papers are accepted at **[NeurIPS 2025](https://nips.cc/)**, **[EMNLP 2025 Research Track](https://2025.emnlp.org/)**, and **[EMNLP 2025 Industry Track](https://2025.emnlp.org/)**.  
-- 🚀 **2025-09-01**: [CODS 2025](https://ikdd.acm.org/cods-2025/) Competition launched – Access **AI Agentic Challenge** [AssetOpsBench-Live](https://www.codabench.org/competitions/10206/).  
-- 📦 **2025-06-01**: AssetOpsBench v1.0 released with **141 industrial Scenarios**.  
-
-✨ Stay tuned for new tracks, competitions, and community events.
+The system being optimized is an agentic inference pipeline where an LLM must discover available MCP tools, plan a workflow, call tools, retrieve relevant industrial documentation, and synthesize a grounded answer. The main bottlenecks we target are planning overhead, repeated low-level tool calls, context usage, retrieval grounding, citation quality, and end-to-end latency.
 
 ---
 
-## Introduction
-AssetOpsBench is a **unified framework for developing, orchestrating, and evaluating domain-specific AI agents** in industrial asset operations and maintenance.  
+## 2. Model/Application Description
 
-It provides:
-- 4 **domain-specific agents**  
-- 2 **multi-agent orchestration frameworks**  
+Briefly describe the model(s) and stack you used:
 
-Designed for **maintenance engineers, reliability specialists, and facility planners**, it allows reproducible evaluation of multi-step workflows in simulated industrial environments.
-
----
-
-## Datasets: 141 Scenarios
-AssetOpsBench scenarios span multiple domains:  
-
-| Domain | Example Task |
-|--------|--------------|
-| IoT | "List all sensors of Chiller 6 in MAIN site" |
-| FSMR | "Identify failure modes detected by Chiller 6 Supply Temperature" |
-| TSFM | "Forecast 'Chiller 9 Condenser Water Flow' for the week of 2020-04-27" |
-| WO | "Generate a work order for Chiller 6 anomaly detection" |
-
-Some tasks focus on a **single domain**, others are **multi-step end-to-end workflows**.  
-Explore all scenarios [HF-Dataset](https://huggingface.co/datasets/ibm-research/AssetOpsBench).
+- **Model architecture:** LLM-backed plan-and-execute agent workflow using MCP tools. The default runner model in the repo is `watsonx/meta-llama/llama-4-maverick-17b-128e-instruct-fp8`; the runner also supports LiteLLM-backed models through `--model-id`.
+- **Framework:** Python 3.12+, `uv`, Model Context Protocol / FastMCP, LiteLLM, IBM WatsonX, CouchDB, Pydantic, NumPy, Pandas, SciPy, ChromaDB, and sentence-transformers.
+- **Dataset:** AssetOpsBench industrial asset operations data and sample CouchDB databases. The setup script loads 2,900 IoT sensor documents and 12,272 work order documents, for 15,172 total documents. Dataset license: [license].
+- **Custom layers or modifications:** 
+  - Added and improved an MCP Skills Server that exposes reusable higher-level workflows such as `assetopsbench/pump_seal_inspection`.
+  - Added `SKILL.md`-based skill files and related skill-server improvements.
+  - Implemented / benchmarked a Knowledge Plugin using ChromaDB persistent indexing, local sentence-transformer embeddings, and citation-formatted retrieval results.
+  - Added benchmark tooling for skill/knowledge experiments, including latency, token/context, reliability, heuristic accuracy, and LLM-judge scoring.
+- **Hardware target:** [NVIDIA A100 / H100 / Jetson Orin / Cloud TPU v5e / Apple M-series / IBM AIU, etc.]
 
 ---
 
-## AI Agents
-### Domain-Specific Agents (Important tools)
-- **IoT Agent**: `get_sites`, `get_history`, `get_assets`, `get_sensors`  
-- **FMSR Agent**: `get_sensors`, `get_failure_modes`, `get_failure_sensor_mapping`  
-- **TSFM Agent**: `forecasting`, `timeseries_anomaly_detection`  
-- **WO Agent**: `generate_work_order`  
+## 3. Final Results Summary
 
-### Multi-Agent Frameworks (Blue Prints)
-- **[MetaAgent](https://github.com/IBM/AssetOpsBench/tree/main/src/meta_agent)**: reAct-based single-agent-as-tool orchestration
-- **[AgentHive](https://github.com/IBM/AssetOpsBench/tree/main/src/agent_hive)**: plan-and-execute sequential workflow
+Replace the numbers below with your measured values. Add or remove rows to fit your study.
 
-### MCP Environment
-The `src/` directory contains MCP servers and a plan-execute runner built on the [Model Context Protocol](https://modelcontextprotocol.io/).
-See **[INSTRUCTIONS.md](./INSTRUCTIONS.md)** for setup, usage, and testing.
+| Metric | Baseline | Optimized | Δ (Improvement) |
+| ------ | -------- | --------- | --------------- |
+| Task Success / Correctness | XX.XX% | XX.XX% | ±X.XX pp |
+| Plan Steps per Query | XX steps | XX steps | XX% fewer |
+| MCP Tool Calls per Query | XX calls | XX calls | XX% fewer |
+| End-to-End Latency (p50) | XX.XX s | XX.XX s | XX% faster |
+| Skill Invocation Success Rate | XX.XX% | XX.XX% | ±X.XX pp |
+| Inference Throughput | XXX queries/min | XXX queries/min | XX× higher |
+| Peak Memory | XX GB | XX GB | XX% less |
 
----
+**Hardware:** [e.g., 1× NVIDIA A100 80GB SXM, CUDA 12.4, PyTorch 2.5, Ubuntu 22.04]
 
-## Leaderboards
-- Evaluated with **7 Large Language Models**  
-- Trajectories scored using **LLM Judge (Llama-4-Maverick-17B)**  
-- **6-dimensional criteria** measure reasoning, execution, and data handling  
-
-Example: MetaAgent leaderboard  
-
-![meta_agent_leaderboard](https://github.com/user-attachments/assets/615059be-e296-40d3-90ec-97ee6cb00412)
+**Headline result (one sentence):** *e.g., "Using MCP skills reduced average plan length from X steps to Y steps and improved end-to-end query latency by Z% on pump-maintenance scenarios, while preserving answer correctness."*
 
 ---
 
-## Run AssetOpsBench in Docker
-- Please Refer to the 
-- Pre-built Docker Images: `assetopsbench-basic` (minimal) & `assetopsbench-extra` (full)  
-- Conda environment: `assetopsbench`  
-- [Full setup guide](https://github.com/IBM/AssetOpsBench/tree/main/benchmark/README.md)  
+## 4. Repository Structure
 
-```bash
-cd /path/to/AssetOpsBench
-chmod +x benchmark/entrypoint.sh
-docker-compose -f benchmark/docker-compose.yml build
-docker-compose -f benchmark/docker-compose.yml up
+```
+.
+├── README.md
+├── LICENSE
+├── pyproject.toml          # Project metadata, dependencies, and CLI entry points
+├── uv.lock                 # Locked dependency versions for uv
+├── .env.public             # Public environment variable template
+├── skills_install.json     # Skill install-state file used by the skills server
+├── start_couchdb_with_data.py
+├── start_couchdb_with_data.sh
+├── benchmark/              # Competition / benchmark track code
+│   ├── cods_track1/        # CODS planning-track benchmark code
+│   ├── cods_track2/        # CODS execution-track benchmark code
+│   └── skill_knowledge/    # HPML skill + knowledge benchmark scripts and runbook
+│       ├── README.md
+│       ├── run_all_benchmarks.py
+│       └── run_benchmark.py
+├── docs/
+│   ├── AssetOpsBench_Repository_Overview.md
+│   ├── Setup_Guide.md
+│   ├── Skills_MCP_Server_Documentation.md
+│   ├── Skills_Server_Benchmarking.md
+│   └── WandB_Integration.md
+├── notebook/               # Exploratory notebooks
+├── runs/                   # Run outputs / experiment artifacts
+├── src/
+│   ├── agent/              # Plan-execute runner, planner, executor, summarizer, CLI
+│   ├── couchdb/            # CouchDB Docker setup and data initialization scripts
+│   ├── evaluation/         # Evaluation utilities
+│   ├── llm/                # LLM backend wrappers
+│   ├── observability/      # Logging / tracing utilities
+│   ├── scenarios/          # Scenario-related code
+│   └── servers/
+│       ├── common/         # Shared MCP stdio utilities
+│       ├── iot/            # IoT sensor-data MCP server
+│       ├── utilities/      # Utility MCP server
+│       ├── fmsr/           # Failure Mode and Sensor Relations MCP server
+│       ├── tsfm/           # Time Series Foundation Model MCP server
+│       ├── wo/             # Work order MCP server
+│       ├── vibration/      # Vibration diagnostics MCP server
+│       ├── knowledge/      # Knowledge/document retrieval MCP server
+│       └── skills/         # Skills MCP server, pack manifests, handlers, tests
+├── results/                # Logs, figures, profiler traces (small files only)
+└── deliverables/           # Final report and final presentation
+    ├── HPML_Final_Report.pdf
+    └── HPML_Final_Presentation.pptx
 ```
 
 ---
 
-## External Resources
-- 📄 **Paper**: [AssetOpsBench: Benchmarking AI Agents for Industrial Asset Operations](https://arxiv.org/pdf/2506.03828)  
-- 🤗 **HuggingFace**: [Scenario & Model Hub](https://huggingface.co/papers/2506.03828)  
-- 📢 **Blog**: [Insights, Tutorials, and Updates](https://research.ibm.com/blog/asset-ops-benchmark)  
-- 🎥 **Recorded Talks**: Link coming soon.
+## 5. Reproducibility Instructions
+
+### A. Environment Setup
+
+```bash
+# Clone
+git clone https://github.com/kmn01/AssetOpsBench.git
+cd AssetOpsBench
+git checkout dev
+
+# Install dependencies with uv
+uv sync
+
+# Optional: activate the virtual environment
+source .venv/bin/activate
+
+# Configure environment
+cp .env.public .env
+# Then edit .env and set required values such as:
+# WATSONX_APIKEY
+# WATSONX_PROJECT_ID
+# WATSONX_URL
+# LITELLM_API_KEY / LITELLM_BASE_URL, if using LiteLLM
+# WANDB_* variables, if using Weights & Biases
+```
+
+**System requirements:** Python 3.12+, Docker, and `uv`. CouchDB is required for the `iot`, `wo`, and `vibration` MCP servers. WatsonX or LiteLLM credentials are required for LLM-backed planning, summarization, and LLM-judge evaluation. Optional W&B dependencies can be installed with the repo’s `wandb` dependency group.
+
+### B. Experiment Tracking Dashboard
+
+Public experiment-tracking dashboard with training and evaluation metrics, system profiling, and baseline vs. optimized comparisons:
+
+> **🔗 Dashboard:** [https://wandb.ai/&lt;team&gt;/&lt;project&gt;](https://wandb.ai/team/project)
+>
+> *Platform used:* [Weights & Biases / MLflow / TensorBoard / Comet / Neptune / other]
+
+Verify the link opens in an incognito browser. The dashboard includes a curated **report** that walks through the optimization story. If your platform does not support public links (e.g., self-hosted MLflow), a static export is committed under `results/dashboard/` instead.
+
+### C. Dataset and Local Services
+
+Start CouchDB and load the bundled sample data:
+
+```bash
+docker compose -f src/couchdb/docker-compose.yaml up -d
+```
+
+To refresh/reload local data from the repo root:
+
+```bash
+uv run python src/couchdb/init_asset_data.py --drop
+uv run python src/couchdb/init_wo.py --drop
+uv run python src/couchdb/init_asset_data.py   --data-file src/couchdb/sample_data/iot/bulk_docs_vibration.json   --db vibration   --drop
+```
+
+The local setup uses:
+
+- `chiller` database for IoT sensor data
+- `workorder` database for work-order records
+- `vibration` database for vibration benchmark data
+
+The dataset is *not* committed to the repository. The script fetches it from [source] (license: [license]) and stores it under `data/`.
+
+### D. Training
+
+This project targets inference-time agent orchestration and retrieval, not model training.
+
+To reproduce the baseline plan-execute workflow:
+
+```bash
+uv run plan-execute   --show-plan   --show-history   "Inspect pump seal condition for pump PUMP1 at site MAIN"
+```
+
+To reproduce the skills-based workflow:
+
+```bash
+uv run plan-execute   --show-plan   --show-history   "Use the pump seal inspection skill for PUMP1 at site MAIN"
+```
+
+To manually test the Knowledge Plugin server:
+
+```bash
+uv run knowledge-mcp-server
+```
+
+To manually test the Skills MCP server:
+
+```bash
+uv run skills-mcp-server
+```
+
+### E. Evaluation
+
+To run the skill + knowledge benchmark suite:
+
+```bash
+uv run python benchmark/skill_knowledge/run_all_benchmarks.py   --model-id watsonx/ibm/granite-3-8b-instruct   --judge-model-id watsonx/ibm/granite-3-8b-instruct
+```
+
+For a faster smoke run:
+
+```bash
+uv run python benchmark/skill_knowledge/run_all_benchmarks.py --limit 10
+```
+
+To run a local scenario benchmark:
+
+```bash
+uv run python benchmark/skill_knowledge/run_benchmark.py   --source local   --scenarios src/scenarios/local/pump_maintenance_utterance.json   --output runs/pump_bench_local.jsonl   --model-id watsonx/ibm/granite-3-8b-instruct
+```
+
+To run selected local scenario IDs:
+
+```bash
+uv run python benchmark/skill_knowledge/run_benchmark.py   --source local   --scenarios src/scenarios/local/pump_maintenance_utterance.json   --ids "401,404,405"   --output runs/pump_bench_local_ids.jsonl   --model-id watsonx/ibm/granite-3-8b-instruct
+```
+
+To run the unit and integration tests:
+
+```bash
+uv run pytest src/ -v
+```
+
+To run unit tests only, without external services:
+
+```bash
+uv run pytest src/ -v -k "not integration"
+```
+
+### F. Profiling
+
+This project uses benchmark instrumentation rather than a traditional `src/profile.py` training profiler. To regenerate timing and context metrics, run the benchmark harness and inspect the resulting JSONL files under `runs/`.
+
+Example:
+
+```bash
+uv run python benchmark/skill_knowledge/run_benchmark.py   --source local   --scenarios src/scenarios/local/pump_maintenance_utterance.json   --output runs/pump_bench_profile.jsonl   --model-id watsonx/ibm/granite-3-8b-instruct   --accuracy-mode both   --judge-model-id watsonx/ibm/granite-3-8b-instruct   --context-window-tokens 128000
+```
+
+The benchmark records include phase timing, per-step timing, token/context fields, tool-call success metrics, heuristic accuracy, and optional LLM-judge accuracy fields.
+
+### G. Quickstart: Reproduce the Headline Result
+
+The following sequence reproduces the headline number in Section 3 end-to-end (≈ XX minutes on [hardware]):
+
+```bash
+# 1. Set up environment
+uv sync
+cp .env.public .env
+# Edit .env with the required model/provider credentials.
+
+# 2. Start CouchDB and seed local data
+docker compose -f src/couchdb/docker-compose.yaml up -d
+
+# 3. Run a baseline plan-execute workflow
+uv run plan-execute   --show-plan   --show-history   "Inspect pump seal condition for pump PUMP1 at site MAIN"
+
+# 4. Run a skills-based workflow
+uv run plan-execute   --show-plan   --show-history   "Use the pump seal inspection skill for PUMP1 at site MAIN"
+
+# 5. Run the skill + knowledge benchmark suite
+uv run python benchmark/skill_knowledge/run_all_benchmarks.py   --model-id watsonx/ibm/granite-3-8b-instruct   --judge-model-id watsonx/ibm/granite-3-8b-instruct
+
+# 6. Compare plan length, tool-call count, latency, context usage,
+#    accuracy/judge score, and retrieval/citation quality in the JSONL outputs.
+```
 
 ---
 
-[![Star History Chart](https://api.star-history.com/svg?repos=IBM/AssetOpsBench&type=Date)](https://star-history.com/#IBM/AssetOpsBench&Date)
+## 6. Results and Observations
 
+A short narrative (3–6 bullets) summarizing what you found. Include 1–2 representative figures from `results/` directly in this README so a reader gets the gist without opening Wandb.
 
----
+- *Optimization 1 (MCP Skills Server):* Replaced repeated low-level multi-server planning with reusable skill invocation through `skills.run_skill`.
+- *Optimization 2 (`SKILL.md` skill format):* Added Markdown-based skill files so skills can be written as instruction/playbook artifacts instead of only Python handler code.
+- *Optimization 3 (Knowledge Plugin):* Added a ChromaDB-backed Knowledge Plugin MCP server that retrieves documentation by asset type or keyword and returns citation-formatted results for LLM synthesis.
+- *Benchmarking / observability:* Added skill + knowledge benchmark scripts that record end-to-end latency, phase timings, per-step timings, tool-call success, token/context usage, heuristic accuracy, strict LLM-judge accuracy, and optional W&B logging.- *What did not work:* [briefly note any optimization that failed or regressed performance, and why you think it failed].
 
-## Contributors
-
-Thanks goes to these wonderful people ✨
-
-<!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
-<!-- prettier-ignore-start -->
-<!-- markdownlint-disable -->
-<table>
-  <tbody>
-    <tr>
-      <td align="center" valign="top" width="14.28%">
-        <a href="https://github.com/ShuxinLin">
-          <img src="https://github.com/ShuxinLin.png?s=50" width="50px;" alt="ShuxinLin"/><br />
-          <sub><b>ShuxinLin</b></sub>
-        </a><br />
-        <a href="https://github.com/IBM/AssetOpsBench/commits?author=ShuxinLin" title="Code">💻</a>
-      </td>
-      <td align="center" valign="top" width="14.28%">
-        <a href="https://github.com/DhavalRepo18">
-          <img src="https://github.com/DhavalRepo18.png?s=50" width="50px;" alt="DhavalRepo18"/><br />
-          <sub><b>DhavalRepo18</b></sub>
-        </a><br />
-        <a href="https://github.com/IBM/AssetOpsBench/commits?author=DhavalRepo18" title="Code">💻</a>
-      </td>
-      <td align="center" valign="top" width="14.28%">
-        <a href="https://github.com/ChathurangiShyalika">
-          <img src="https://github.com/ChathurangiShyalika.png?s=50" width="50px;" alt="ChathurangiShyalika"/><br />
-          <sub><b>ChathurangiShyalika</b></sub>
-        </a><br />
-        <a href="https://github.com/IBM/AssetOpsBench/commits?author=ChathurangiShyalika" title="Code">💻</a>
-      </td>
-      <td align="center" valign="top" width="14.28%">
-        <a href="https://github.com/Dev-Scodes5">
-          <img src="https://github.com/Dev-Scodes5.png?s=50" width="50px;" alt="Dev-Scodes5"/><br />
-          <sub><b>Dev-Scodes5</b></sub>
-        </a><br />
-        <a href="https://github.com/IBM/AssetOpsBench/commits?author=Dev-Scodes5" title="Code">💻</a>
-      </td>
-      <td align="center" valign="top" width="14.28%">
-        <a href="https://github.com/DeveloperMindset123">
-          <img src="https://github.com/DeveloperMindset123.png?s=50" width="50px;" alt="DeveloperMindset123"/><br />
-          <sub><b>DeveloperMindset123</b></sub>
-        </a><br />
-        <a href="https://github.com/IBM/AssetOpsBench/commits?author=DeveloperMindset123" title="Code">💻</a>
-      </td>
-      <td align="center" valign="top" width="14.28%">
-        <a href="https://github.com/LGDiMaggio">
-          <img src="https://github.com/LGDiMaggio.png?s=50" width="50px;" alt="LGDiMaggio"/><br />
-          <sub><b>LGDiMaggio</b></sub>
-        </a><br />
-        <a href="https://github.com/IBM/AssetOpsBench/commits?author=LGDiMaggio" title="Code">💻</a>
-      </td>
-      <td align="center" valign="top" width="14.28%">
-        <a href="https://github.com/PUSHPAK-JAISWAL">
-          <img src="https://github.com/PUSHPAK-JAISWAL.png?s=50" width="50px;" alt="PUSHPAK-JAISWAL"/><br />
-          <sub><b>PUSHPAK-JAISWAL</b></sub>
-        </a><br />
-        <a href="https://github.com/IBM/AssetOpsBench/commits?author=PUSHPAK-JAISWAL" title="Code">💻</a>
-      </td>
-    </tr>
-    <tr>
-      <td align="center" valign="top" width="14.28%">
-        <a href="https://github.com/bradleyjeck">
-          <img src="https://github.com/bradleyjeck.png?s=50" width="50px;" alt="bradleyjeck"/><br />
-          <sub><b>bradleyjeck</b></sub>
-        </a><br />
-        <a href="https://github.com/IBM/AssetOpsBench/commits?author=bradleyjeck" title="Code">💻</a>
-      </td>
-      <td align="center" valign="top" width="14.28%">
-        <a href="https://github.com/florenzi002">
-          <img src="https://github.com/florenzi002.png?s=50" width="50px;" alt="florenzi002"/><br />
-          <sub><b>florenzi002</b></sub>
-        </a><br />
-        <a href="https://github.com/IBM/AssetOpsBench/commits?author=florenzi002" title="Code">💻</a>
-      </td>
-      <td align="center" valign="top" width="14.28%">
-        <a href="https://github.com/jack-pfeifer">
-          <img src="https://github.com/jack-pfeifer.png?s=50" width="50px;" alt="jack-pfeifer"/><br />
-          <sub><b>jack-pfeifer</b></sub>
-        </a><br />
-        <a href="https://github.com/IBM/AssetOpsBench/commits?author=jack-pfeifer" title="Code">💻</a>
-      </td>
-      <td align="center" valign="top" width="14.28%">
-        <a href="https://github.com/jdsheehan">
-          <img src="https://github.com/jdsheehan.png?s=50" width="50px;" alt="jdsheehan"/><br />
-          <sub><b>jdsheehan</b></sub>
-        </a><br />
-        <a href="https://github.com/IBM/AssetOpsBench/commits?author=jdsheehan" title="Code">💻</a>
-      </td>
-      <td align="center" valign="top" width="14.28%">
-        <a href="https://github.com/jtrayfield">
-          <img src="https://github.com/jtrayfield.png?s=50" width="50px;" alt="jtrayfield"/><br />
-          <sub><b>jtrayfield</b></sub>
-        </a><br />
-        <a href="https://github.com/IBM/AssetOpsBench/commits?author=jtrayfield" title="Code">💻</a>
-      </td>
-      <td align="center" valign="top" width="14.28%">
-        <a href="https://github.com/kushwaha001">
-          <img src="https://github.com/kushwaha001.png?s=50" width="50px;" alt="kushwaha001"/><br />
-          <sub><b>kushwaha001</b></sub>
-        </a><br />
-        <a href="https://github.com/IBM/AssetOpsBench/commits?author=kushwaha001" title="Code">💻</a>
-      </td>
-      <td align="center" valign="top" width="14.28%">
-        <a href="https://github.com/nianjunz">
-          <img src="https://github.com/nianjunz.png?s=50" width="50px;" alt="nianjunz"/><br />
-          <sub><b>nianjunz</b></sub>
-        </a><br />
-        <a href="https://github.com/IBM/AssetOpsBench/commits?author=nianjunz" title="Code">💻</a>
-      </td>
-    </tr>
-    <tr>
-      <td align="center" valign="top" width="14.28%">
-        <a href="https://github.com/sandeepkunkunuru">
-          <img src="https://github.com/sandeepkunkunuru.png?s=50" width="50px;" alt="sandeepkunkunuru"/><br />
-          <sub><b>sandeepkunkunuru</b></sub>
-        </a><br />
-        <a href="https://github.com/IBM/AssetOpsBench/commits?author=sandeepkunkunuru" title="Code">💻</a>
-      </td>
-      <td align="center" valign="top" width="14.28%">
-        <a href="https://github.com/srutanik">
-          <img src="https://github.com/srutanik.png?s=50" width="50px;" alt="srutanik"/><br />
-          <sub><b>srutanik</b></sub>
-        </a><br />
-        <a href="https://github.com/IBM/AssetOpsBench/commits?author=srutanik" title="Code">💻</a>
-      </td>
-      <td align="center" valign="top" width="14.28%">
-        <a href="https://github.com/thedgarg31">
-          <img src="https://github.com/thedgarg31.png?s=50" width="50px;" alt="thedgarg31"/><br />
-          <sub><b>thedgarg31</b></sub>
-        </a><br />
-        <a href="https://github.com/IBM/AssetOpsBench/commits?author=thedgarg31" title="Code">💻</a>
-      </td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-    </tr>
-  </tbody>
-</table>
-<!-- markdownlint-restore -->
-<!-- prettier-ignore-end -->
-
-<!-- ALL-CONTRIBUTORS-LIST:END -->
+![Baseline vs Optimized latency](results/figures/latency_comparison.png)
 
 ---
 
+## 7. Notes
+
+- Source files live under `src/`, with MCP servers under `src/servers/` and the plan-execute agent under `src/agent/`.
+- The skills server lives under `src/servers/skills/`, with bundled skill packs under `src/servers/skills/packs/`.
+- The Knowledge Plugin lives under `src/servers/knowledge/` and uses ChromaDB persistent indexing with local sentence-transformer embeddings.
+- Skill + knowledge benchmark scripts live under `benchmark/skill_knowledge/`.
+- Benchmark outputs are written as JSONL files, typically under `runs/`.
+- All secrets, including WatsonX, LiteLLM, Hugging Face, and W&B credentials, are loaded from environment variables. See `.env.public`.
+- Trained checkpoints are stored in [GitHub Releases / Hugging Face Hub / external bucket] — see `docs/checkpoints.md`.
+
+### AI Use Disclosure
+
+*Per the HPML AI Use Policy (posted on CourseWorks). Required for every submission.*
+
+**Did your team use any AI tool in completing this project?**
+
+- [ ] No, we did not use any AI tool.
+- [ ] Yes, we used AI assistance as described below.
+
+**Tool(s) used:** *e.g., ChatGPT, Claude, GitHub Copilot, Cursor*
+
+**Specific purpose:** *e.g., debugged a CUDA OOM error, clarified SM occupancy, polished prose in the report's introduction*
+
+**Sections affected:** *e.g., src/profile.py setup, README §6 results narrative, report §V Discussion*
+
+**How we verified correctness:** *e.g., re-ran every reported experiment ourselves; confirmed profiler-trace interpretations against the raw traces in results/; rewrote AI-suggested code in our own words and confirmed it produces the same numbers as the version we hand-wrote.*
+
+By submitting this project, the team confirms that the analysis, interpretations, and conclusions are our own, and that any AI assistance is fully disclosed above. The same disclosure block appears as an appendix in the final report.
+
+### License
+
+Released under the MIT License. See [`LICENSE`](LICENSE).
+
+### Citation
+
+If you build on this work, please cite:
+
+```bibtex
+@misc{assetopsbenchskills2026hpml,
+  title  = {AssetOpsBench MCP Skills Server},
+  author = {Bhuvanesh, Yeshitha and Li, Andrew and Maturi, Trisha and Natarajan, Kirthana and On, Thai},
+  year   = {2026},
+  note   = {HPML Spring 2026 Final Project, Columbia University},
+  url    = {https://github.com/kmn01/AssetOpsBench/tree/dev}
+}
+```
+
+### Contact
+
+Open a GitHub Issue or email *[team-contact@columbia.edu]*.
+
+---
+
+*HPML Spring 2026 — Dr. Kaoutar El Maghraoui — Columbia University*
