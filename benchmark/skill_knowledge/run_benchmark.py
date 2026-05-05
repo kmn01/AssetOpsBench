@@ -672,7 +672,7 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument(
         "--accuracy-mode",
         choices=("heuristic", "llm-judge", "both"),
-        default="heuristic",
+        default="llm-judge",
         help=(
             "Accuracy path: heuristic lexical score, strict llm rubric judge, "
             "or both."
