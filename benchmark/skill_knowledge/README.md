@@ -329,6 +329,8 @@ uv run python benchmark/skill_knowledge/run_benchmark.py \
 
 ## 7) Hugging Face dataset benchmark
 
+https://huggingface.co/datasets/ibm-research/AssetOpsBench
+
 ```bash
 uv run python benchmark/skill_knowledge/run_benchmark.py \
   --source hf \

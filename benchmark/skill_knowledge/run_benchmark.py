@@ -20,10 +20,15 @@ import logging
 import random
 import re
 import sys
-from collections.abc import Iterable
 from pathlib import Path
+from collections.abc import Iterable
 from statistics import mean
 from typing import Any
+
+try:
+    from generate_dashboard import generate_dashboard as render_dashboard
+except ModuleNotFoundError:
+    from benchmark.skill_knowledge.generate_dashboard import generate_dashboard as render_dashboard
 
 _log = logging.getLogger(__name__)
 
@@ -950,6 +955,25 @@ async def _amain() -> None:
 
     summary = _summarize_run(records)
     _log.info("Benchmark summary: %s", json.dumps(summary, sort_keys=True))
+    try:
+        # Map the JSONL output filename to an HTML filename under repo_root/dashboards
+        out_name = args.output.name
+        if out_name.lower().endswith('.jsonl'):
+            out_name = out_name[: -len('.jsonl')] + '.html'
+        else:
+            out_name = out_name + '.html'
+        dashboard_path = args.repo_root / "dashboards" / out_name
+        jsonl_text = args.output.read_text(encoding="utf-8")
+        render_dashboard(
+            jsonl_text,
+            dashboard_path,
+            title=f"Benchmark: {args.output.name}",
+            data_href=f"runs/{args.output.name}",
+            data_name=args.output.name,
+        )
+        _log.info("Wrote static dashboard: %s", str(dashboard_path))
+    except Exception:
+        _log.exception("Failed to generate dashboard")
 
 
 def main() -> None:
