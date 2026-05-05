@@ -16,7 +16,7 @@ from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_TEMPLATE = REPO_ROOT / "4_27_26_vibration_judged3.html"
+DEFAULT_TEMPLATE = REPO_ROOT / "dashboards" / "template.html"
 
 
 def _escape_jsonl_for_js(jsonl_text: str) -> str:
