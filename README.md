@@ -21,7 +21,7 @@
 - **GitHub repository:** [https://github.com/kmn01/AssetOpsBench/tree/dev](https://github.com/kmn01/AssetOpsBench/tree/dev)
 - **Final report:** [`deliverables/HPML_Final_Report.pdf`](deliverables/HPML_Final_Report.pdf)
 - **Final presentation:** [`deliverables/HPML_Final_Presentation.pptx`](deliverables/HPML_Final_Presentation.pptx)
-- **Experiment-tracking dashboard:** [link to public Wandb / MLflow / TensorBoard / Comet / Neptune dashboard]
+- **Experiment-tracking dashboard:** [https://wandb.ai/kmn01-columbia-university/HPML%20Project/](https://wandb.ai/kmn01-columbia-university/HPML%20Project/)
 
 The final report PDF and the presentation file are checked into the `deliverables/` folder of this repository **and** uploaded to CourseWorks.
 
@@ -41,7 +41,7 @@ Briefly describe the model(s) and stack you used:
 
 - **Model architecture:** LLM-backed plan-and-execute agent workflow using MCP tools. The default runner model in the repo is `watsonx/meta-llama/llama-4-maverick-17b-128e-instruct-fp8`; the runner also supports LiteLLM-backed models through `--model-id`.
 - **Framework:** Python 3.12+, `uv`, Model Context Protocol / FastMCP, LiteLLM, IBM WatsonX, CouchDB, Pydantic, NumPy, Pandas, SciPy, ChromaDB, and sentence-transformers.
-- **Dataset:** AssetOpsBench industrial asset operations data and sample CouchDB databases. The setup script loads 2,900 IoT sensor documents and 12,272 work order documents, for 15,172 total documents. Dataset license: [license].
+- **Dataset:** AssetOpsBench industrial asset operations data and sample CouchDB databases. License: Apache license 2.0.
 - **Custom layers or modifications:** 
   - Added and improved an MCP Skills Server that exposes reusable higher-level workflows such as `assetopsbench/pump_seal_inspection`.
   - Added `SKILL.md`-based skill files and related skill-server improvements.
@@ -127,6 +127,12 @@ Replace the numbers below with your measured values. Add or remove rows to fit y
 
 ### A. Environment Setup
 
+Install Required Tools:
+1. Install Python
+2. Install `uv`
+3. Install Docker
+4. Install Git (Optional but Recommended)
+
 ```bash
 # Clone
 git clone https://github.com/kmn01/AssetOpsBench.git
@@ -136,7 +142,7 @@ git checkout dev
 # Install dependencies with uv
 uv sync
 
-# Optional: activate the virtual environment
+# Optional: activate the virtual environment. You can skip this if you always use `uv run`. Otherwise:
 source .venv/bin/activate
 
 # Configure environment
@@ -155,70 +161,46 @@ cp .env.public .env
 
 Public experiment-tracking dashboard with training and evaluation metrics, system profiling, and baseline vs. optimized comparisons:
 
-> **🔗 Dashboard:** [https://wandb.ai/&lt;team&gt;/&lt;project&gt;](https://wandb.ai/team/project)
+> **🔗 Dashboard:** [https://wandb.ai/kmn01-columbia-university/HPML%20Project/]([url](https://wandb.ai/kmn01-columbia-university/HPML%20Project/))
 >
-> *Platform used:* [Weights & Biases / MLflow / TensorBoard / Comet / Neptune / other]
+> *Platform used:* Weights & Biases
 
 Verify the link opens in an incognito browser. The dashboard includes a curated **report** that walks through the optimization story. If your platform does not support public links (e.g., self-hosted MLflow), a static export is committed under `results/dashboard/` instead.
 
 ### C. Dataset and Local Services
 
-Start CouchDB and load the bundled sample data:
+Start CouchDB container and load sample data into CouchDB:
 
 ```bash
 docker compose -f src/couchdb/docker-compose.yaml up -d
 ```
 
-To refresh/reload local data from the repo root:
-
-```bash
-uv run python src/couchdb/init_asset_data.py --drop
-uv run python src/couchdb/init_wo.py --drop
-uv run python src/couchdb/init_asset_data.py   --data-file src/couchdb/sample_data/iot/bulk_docs_vibration.json   --db vibration   --drop
+Expected output:
+```
+[+] Running 2/2
+ ✔ Network couchdb_default     Created                    0.1s
+ ✔ Container couchdb-couchdb-1 Started                    1.2s
 ```
 
-The local setup uses:
+The dataset is committed to the repository. It is stored under `src/couchdb`.
+For more details on setup, please refer to [docs/Setup_Guide.md](docs/Setup_Guide.md).
 
-- `chiller` database for IoT sensor data
-- `workorder` database for work-order records
-- `vibration` database for vibration benchmark data
-
-The dataset is *not* committed to the repository. The script fetches it from [source] (license: [license]) and stores it under `data/`.
-
-### D. Training
-
-This project targets inference-time agent orchestration and retrieval, not model training.
-
-To reproduce the baseline plan-execute workflow:
-
-```bash
-uv run plan-execute   --show-plan   --show-history   "Inspect pump seal condition for pump PUMP1 at site MAIN"
-```
-
-To reproduce the skills-based workflow:
-
-```bash
-uv run plan-execute   --show-plan   --show-history   "Use the pump seal inspection skill for PUMP1 at site MAIN"
-```
-
-To manually test the Knowledge Plugin server:
-
-```bash
-uv run knowledge-mcp-server
-```
-
-To manually test the Skills MCP server:
-
-```bash
-uv run skills-mcp-server
-```
-
-### E. Evaluation
+### D. Evaluation
 
 To run the skill + knowledge benchmark suite:
 
 ```bash
-uv run python benchmark/skill_knowledge/run_all_benchmarks.py   --model-id watsonx/ibm/granite-3-8b-instruct   --judge-model-id watsonx/ibm/granite-3-8b-instruct
+uv run python benchmark/skill_knowledge/run_all_benchmarks.py \
+  --model-id watsonx/ibm/granite-3-8b-instruct \
+  --judge-model-id watsonx/ibm/granite-3-8b-instruct
+```
+
+Single command for KP vs RAG + dashboard build:
+```bash
+uv run python benchmark/skill_knowledge/run_kp_rag_comparison.py \
+  --model-id watsonx/ibm/granite-3-8b-instruct \
+  --judge-model-id watsonx/ibm/granite-3-8b-instruct \
+  --include-jsonl runs/LLM_judge_4_23_26_pump_baseline.jsonl
 ```
 
 For a faster smoke run:
@@ -230,13 +212,49 @@ uv run python benchmark/skill_knowledge/run_all_benchmarks.py --limit 10
 To run a local scenario benchmark:
 
 ```bash
-uv run python benchmark/skill_knowledge/run_benchmark.py   --source local   --scenarios src/scenarios/local/pump_maintenance_utterance.json   --output runs/pump_bench_local.jsonl   --model-id watsonx/ibm/granite-3-8b-instruct
+uv run python benchmark/skill_knowledge/run_benchmark.py \
+  --source local \
+  --scenarios src/scenarios/local/pump_maintenance_utterance.json \
+  --output runs/pump_bench_local.jsonl \
+  --model-id watsonx/ibm/granite-3-8b-instruct
 ```
 
 To run selected local scenario IDs:
 
 ```bash
-uv run python benchmark/skill_knowledge/run_benchmark.py   --source local   --scenarios src/scenarios/local/pump_maintenance_utterance.json   --ids "401,404,405"   --output runs/pump_bench_local_ids.jsonl   --model-id watsonx/ibm/granite-3-8b-instruct
+uv run python benchmark/skill_knowledge/run_benchmark.py \
+  --source local \
+  --scenarios src/scenarios/local/pump_maintenance_utterance.json \
+  --ids "401,404,405" \
+  --output runs/pump_bench_local_ids.jsonl \
+  --model-id watsonx/ibm/granite-3-8b-instruct
+```
+
+KP vs RAG comparison benchmark:
+Knowledge Plugin mode:
+```bash
+uv run python benchmark/skill_knowledge/run_benchmark.py \
+  --source local \
+  --scenarios src/scenarios/local/pump_maintenance_utterance.json \
+  --ids "409,410" \
+  --runner-mode kp \
+  --accuracy-mode llm-judge \
+  --judge-model-id watsonx/ibm/granite-3-8b-instruct \
+  --output runs/pump_kp_vs_rag_kp.jsonl \
+  --model-id watsonx/ibm/granite-3-8b-instruct
+```
+
+Traditional RAG mode:
+```bash
+uv run python benchmark/skill_knowledge/run_benchmark.py \
+  --source local \
+  --scenarios src/scenarios/local/pump_maintenance_utterance.json \
+  --ids "409,410" \
+  --runner-mode rag \
+  --accuracy-mode llm-judge \
+  --judge-model-id watsonx/ibm/granite-3-8b-instruct \
+  --output runs/pump_kp_vs_rag_rag.jsonl \
+  --model-id watsonx/ibm/granite-3-8b-instruct
 ```
 
 To run the unit and integration tests:
@@ -250,15 +268,23 @@ To run unit tests only, without external services:
 ```bash
 uv run pytest src/ -v -k "not integration"
 ```
+For further details, please refer to [docs/Skills_Server_Benchmarking.md](docs/Skills_Server_Benchmarking.md) and [benchmark/skill_knowledge/README.md](benchmark/skill_knowledge/README.md).
 
-### F. Profiling
+### E. Profiling
 
 This project uses benchmark instrumentation rather than a traditional `src/profile.py` training profiler. To regenerate timing and context metrics, run the benchmark harness and inspect the resulting JSONL files under `runs/`.
 
 Example:
 
 ```bash
-uv run python benchmark/skill_knowledge/run_benchmark.py   --source local   --scenarios src/scenarios/local/pump_maintenance_utterance.json   --output runs/pump_bench_profile.jsonl   --model-id watsonx/ibm/granite-3-8b-instruct   --accuracy-mode both   --judge-model-id watsonx/ibm/granite-3-8b-instruct   --context-window-tokens 128000
+uv run python benchmark/skill_knowledge/run_benchmark.py
+  --source local
+  --scenarios src/scenarios/local/pump_maintenance_utterance.json
+  --output runs/pump_bench_profile.jsonl
+  --model-id watsonx/ibm/granite-3-8b-instruct
+  --accuracy-mode both
+  --judge-model-id watsonx/ibm/granite-3-8b-instruct
+  --context-window-tokens 128000
 ```
 
 The benchmark records include phase timing, per-step timing, token/context fields, tool-call success metrics, heuristic accuracy, and optional LLM-judge accuracy fields.
@@ -277,15 +303,17 @@ cp .env.public .env
 docker compose -f src/couchdb/docker-compose.yaml up -d
 
 # 3. Run a baseline plan-execute workflow
-uv run plan-execute   --show-plan   --show-history   "Inspect pump seal condition for pump PUMP1 at site MAIN"
+uv run plan-execute
+  --show-plan
+  --show-history
+  "Inspect pump seal condition for pump PUMP1 at site MAIN"
 
-# 4. Run a skills-based workflow
-uv run plan-execute   --show-plan   --show-history   "Use the pump seal inspection skill for PUMP1 at site MAIN"
+# 4. Run the skill + knowledge benchmark suite
+uv run python benchmark/skill_knowledge/run_all_benchmarks.py
+  --model-id watsonx/ibm/granite-3-8b-instruct
+  --judge-model-id watsonx/ibm/granite-3-8b-instruct
 
-# 5. Run the skill + knowledge benchmark suite
-uv run python benchmark/skill_knowledge/run_all_benchmarks.py   --model-id watsonx/ibm/granite-3-8b-instruct   --judge-model-id watsonx/ibm/granite-3-8b-instruct
-
-# 6. Compare plan length, tool-call count, latency, context usage,
+# 5. Compare plan length, tool-call count, latency, context usage,
 #    accuracy/judge score, and retrieval/citation quality in the JSONL outputs.
 ```
 
@@ -295,10 +323,10 @@ uv run python benchmark/skill_knowledge/run_all_benchmarks.py   --model-id watso
 
 A short narrative (3–6 bullets) summarizing what you found. Include 1–2 representative figures from `results/` directly in this README so a reader gets the gist without opening Wandb.
 
-- *Optimization 1 (MCP Skills Server):* Replaced repeated low-level multi-server planning with reusable skill invocation through `skills.run_skill`.
-- *Optimization 2 (`SKILL.md` skill format):* Added Markdown-based skill files so skills can be written as instruction/playbook artifacts instead of only Python handler code.
-- *Optimization 3 (Knowledge Plugin):* Added a ChromaDB-backed Knowledge Plugin MCP server that retrieves documentation by asset type or keyword and returns citation-formatted results for LLM synthesis.
-- *Benchmarking / observability:* Added skill + knowledge benchmark scripts that record end-to-end latency, phase timings, per-step timings, tool-call success, token/context usage, heuristic accuracy, strict LLM-judge accuracy, and optional W&B logging.- *What did not work:* [briefly note any optimization that failed or regressed performance, and why you think it failed].
+- *Optimization 1 (MCP Skills Server):* The MCP Skills Server reduces orchestration overhead by turning repeated multi-tool maintenance workflows into discoverable, governable skill calls, so the agent can invoke one namespaced skill instead of manually coordinating several low-level MCP servers.
+- *Optimization 2 (Knowledge Plugin):* The Knowledge Plugin reduces retrieval overhead and improves answer grounding by pre-indexing asset documentation in ChromaDB, enabling targeted semantic lookup with citations instead of repeatedly searching through raw documents at inference time.
+- *Optimization 3 (Benchmarking):* Added skill + knowledge benchmark scripts that record end-to-end latency, phase timings, per-step timings, tool-call success, token/context usage, heuristic accuracy, strict LLM-judge accuracy, and W&B logging.
+- *What did not work:* [briefly note any optimization that failed or regressed performance, and why you think it failed].
 
 ![Baseline vs Optimized latency](results/figures/latency_comparison.png)
 
@@ -312,7 +340,6 @@ A short narrative (3–6 bullets) summarizing what you found. Include 1–2 repr
 - Skill + knowledge benchmark scripts live under `benchmark/skill_knowledge/`.
 - Benchmark outputs are written as JSONL files, typically under `runs/`.
 - All secrets, including WatsonX, LiteLLM, Hugging Face, and W&B credentials, are loaded from environment variables. See `.env.public`.
-- Trained checkpoints are stored in [GitHub Releases / Hugging Face Hub / external bucket] — see `docs/checkpoints.md`.
 
 ### AI Use Disclosure
 
@@ -321,11 +348,11 @@ A short narrative (3–6 bullets) summarizing what you found. Include 1–2 repr
 **Did your team use any AI tool in completing this project?**
 
 - [ ] No, we did not use any AI tool.
-- [ ] Yes, we used AI assistance as described below.
+- [X] Yes, we used AI assistance as described below.
 
-**Tool(s) used:** *e.g., ChatGPT, Claude, GitHub Copilot, Cursor*
+**Tool(s) used:** *ChatGPT, GitHub Copilot*
 
-**Specific purpose:** *e.g., debugged a CUDA OOM error, clarified SM occupancy, polished prose in the report's introduction*
+**Specific purpose:** *e.g., debugged a CUDA OOM error, clarified SM occupancy, polished prose in the deliverables (readme, report, slides)*
 
 **Sections affected:** *e.g., src/profile.py setup, README §6 results narrative, report §V Discussion*
 
@@ -353,7 +380,7 @@ If you build on this work, please cite:
 
 ### Contact
 
-Open a GitHub Issue or email *[team-contact@columbia.edu]*.
+Open a GitHub Issue or email *{ayl2159, kmn2161, tqo2101, tm3530, yb2649} @columbia.edu*.
 
 ---
 
