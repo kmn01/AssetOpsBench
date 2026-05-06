@@ -140,7 +140,7 @@ def main() -> None:
 
     runs: list[list[str]] = []
 
-    # 1) Local baseline
+    # 1) Local baseline (KP / plan-execute)
     runs.append(
         _with_optional_limit(
             _base_cmd()
@@ -149,8 +149,10 @@ def main() -> None:
                 "local",
                 "--scenarios",
                 str(local_scenarios),
+                "--runner-mode",
+                "kp",
                 "--output",
-                str(args.output_dir / "pump_bench_local.jsonl"),
+                str(args.output_dir / "pump_bench_local_kp.jsonl"),
                 "--model-id",
                 args.model_id,
             ],
@@ -158,7 +160,7 @@ def main() -> None:
         )
     )
 
-    # 2) Local selected IDs
+    # 2) Local baseline (RAG)
     runs.append(
         _with_optional_limit(
             _base_cmd()
@@ -167,6 +169,28 @@ def main() -> None:
                 "local",
                 "--scenarios",
                 str(local_scenarios),
+                "--runner-mode",
+                "rag",
+                "--output",
+                str(args.output_dir / "pump_bench_local_rag.jsonl"),
+                "--model-id",
+                args.model_id,
+            ],
+            limit=args.limit,
+        )
+    )
+
+    # 3) Local selected IDs
+    runs.append(
+        _with_optional_limit(
+            _base_cmd()
+            + [
+                "--source",
+                "local",
+                "--scenarios",
+                str(local_scenarios),
+                "--runner-mode",
+                "kp",
                 "--ids",
                 "401,404,405",
                 "--output",
@@ -178,7 +202,7 @@ def main() -> None:
         )
     )
 
-    # 3) HF baseline
+    # 4) HF baseline
     runs.append(
         _with_optional_limit(
             _base_cmd()
@@ -198,7 +222,7 @@ def main() -> None:
         )
     )
 
-    # 4) HF shuffle/limit
+    # 5) HF shuffle/limit
     cmd_hf_limit = (
         _base_cmd()
         + [
@@ -222,7 +246,7 @@ def main() -> None:
         cmd_hf_limit += ["--limit", "100"]
     runs.append(cmd_hf_limit)
 
-    # 5) HF synthetic mixed
+    # 6) HF synthetic mixed
     cmd_synth = (
         _base_cmd()
         + [
@@ -248,7 +272,7 @@ def main() -> None:
         cmd_synth += ["--limit", str(args.limit)]
     runs.append(cmd_synth)
 
-    # 6) HF synthetic only
+    # 7) HF synthetic only
     cmd_synth_only = (
         _base_cmd()
         + [
@@ -271,7 +295,7 @@ def main() -> None:
         cmd_synth_only += ["--limit", str(args.limit)]
     runs.append(cmd_synth_only)
 
-    # 7) Heuristic accuracy
+    # 8) Heuristic accuracy
     cmd_heuristic = (
         _base_cmd()
         + [
@@ -295,7 +319,7 @@ def main() -> None:
         cmd_heuristic += ["--limit", str(args.limit)]
     runs.append(cmd_heuristic)
 
-    # 8) Strict llm-judge accuracy
+    # 9) Strict llm-judge accuracy
     cmd_judge = (
         _base_cmd()
         + [
@@ -323,7 +347,7 @@ def main() -> None:
         cmd_judge += ["--limit", str(args.limit)]
     runs.append(cmd_judge)
 
-    # 9) Both accuracy modes
+    # 10) Both accuracy modes
     cmd_both = (
         _base_cmd()
         + [
@@ -355,7 +379,7 @@ def main() -> None:
         cmd_both += ["--limit", str(args.limit)]
     runs.append(cmd_both)
 
-    # 10) Optional wandb run
+    # 11) Optional wandb run
     if args.with_wandb:
         cmd_wandb = (
             _base_cmd()

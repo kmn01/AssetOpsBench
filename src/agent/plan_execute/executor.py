@@ -115,8 +115,7 @@ class Executor:
                     lines.append(f"  - {t['name']}({params}): {t['description']}")
                 descriptions[name] = "\n".join(lines)
             except Exception as exc:  # noqa: BLE001
-                _log.warning("Skipping unavailable server %r: %s", name, exc)
-                continue
+                descriptions[name] = f"  (unavailable: {exc})"
         return descriptions
 
     async def execute_plan(self, plan: Plan, question: str) -> list[StepResult]:
@@ -209,15 +208,9 @@ class Executor:
         _log.info("Step %d: calling LLM to resolve args.", step.step_number)
         t_arg = time.monotonic()
         try:
-            if step.tool_args:
-                resolved_args = step.tool_args
-                arg_usage = CompletionUsage()
-                arg_ms = 0.0
-            else:
-                resolved_args, arg_usage = await _resolve_args_with_llm(
-                    question, step.task, tool_name, tool_schema, context, self._llm
-                )
-                arg_ms = (time.monotonic() - t_arg) * 1000.0
+            resolved_args, arg_usage = await _resolve_args_with_llm(
+                question, step.task, tool_name, tool_schema, context, self._llm
+            )
         except Exception as exc:  # noqa: BLE001
             return StepResult(
                 step_number=step.step_number,
@@ -231,6 +224,7 @@ class Executor:
                 mcp_call_ms=None,
             )
 
+        arg_ms = (time.monotonic() - t_arg) * 1000.0
         _log.info(
             "Step %d: calling MCP tool %r on server %r.",
             step.step_number,
@@ -305,10 +299,12 @@ async def _resolve_args_with_llm(
         ) from exc
     resolved = _parse_json(raw)
     if resolved is None:
-        raise ValueError(
-            f"Tool {tool!r}: arg resolution returned no parseable JSON. "
-            f"Raw response: {raw[:300]!r}"
+        _log.warning(
+            "Tool '%s': arg resolution returned no parseable JSON (response: %r…)",
+            tool,
+            (raw[:120] if raw else ""),
         )
+        return {}, usage
     return resolved, usage
 
 
