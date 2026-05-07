@@ -10,3 +10,23 @@ skills:
     asset_types: [centrifugal_pump, pump]
     keywords: [pump, seal, inspection, mechanical seal, centrifugal]
     default_enabled: true
+
+  - id: chiller_6_sensors
+    version: "1.0.0"
+    description: >
+      High-level workflow that confirms Chiller 6 exists at the MAIN site
+      and retrieves all sensors associated with the asset.
+    required_servers: [iot]
+    asset_types: [chiller]
+    keywords: [chiller, chiller 6, sensors, sensor inventory, main site]
+    default_enabled: true
+
+  - id: chiller_6_failure_modes
+    version: "1.0.0"
+    description: >
+      High-level workflow that confirms Chiller 6 exists at the MAIN site
+      and retrieves curated failure modes for the chiller.
+    required_servers: [iot, fmsr]
+    asset_types: [chiller]
+    keywords: [chiller, chiller 6, failure modes, faults, diagnostics, fmsr]
+    default_enabled: true
