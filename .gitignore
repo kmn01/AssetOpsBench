@@ -188,8 +188,6 @@ cython_debug/
 
 # Local benchmark outputs and W&B client data
 runs/
-!runs/
-!runs/quick_one_rerun_4_20_26.jsonl
 wandb/
 main.json
 
