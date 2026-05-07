@@ -3,6 +3,15 @@
 
 Examples:
 
+    WANDB_RUN_NAME="hf_assetops_1scenario_baseline_maverick" \
+    uv run python benchmark/run_baseline_benchmark.py \
+    --source hf \
+    --hf-dataset-name ibm-research/AssetOpsBench \
+    --hf-split train \
+    --output runs/hf_assetops_1scenario_baseline_maverick.jsonl \
+    --accuracy-mode both
+    --limit 1
+
     WANDB_RUN_NAME="hf_assetops_allscenario_baseline_maverick" \
     uv run python benchmark/run_baseline_benchmark.py \
     --source hf \
@@ -882,10 +891,12 @@ async def _amain() -> None:
     }
 
     records: list[dict[str, Any]] = []
+    total_scenarios = len(scenarios)
     with WandbBenchmarkBatch(base_config=suite_config) as wb:
-        for row in scenarios:
+        for idx, row in enumerate(scenarios, start=1):
             sid = _safe_int(row.get("id"))
             stype = str(row.get("type", ""))
+            print(f"Starting scenario {idx}/{total_scenarios} (id={sid}, type={stype})")
             text = str(row["text"])
             rec = await _run_one(
                 runner,
