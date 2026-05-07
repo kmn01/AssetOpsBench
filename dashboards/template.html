@@ -5,6 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AssetOpsBench Evaluation Dashboard (LLM Judge)</title>
     <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <script>
+        if (typeof window.Plotly === "undefined") {
+            document.write('<script src="https://unpkg.com/plotly.js-dist-min@2.27.0/plotly.min.js"><\\/script>');
+        }
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -490,6 +495,7 @@
             <div class="filter-hint">Multi-select to focus charts. Empty selection means all scenarios.</div>
         </div>
     </div>
+    <div id="dashboard-warning" style="display:none;margin:12px 0;padding:10px 12px;border-radius:10px;border:1px solid #f0c36d;background:#fff8e6;color:#5e4a19;font-size:0.9rem;"></div>
 
     <div class="controls">
         <div class="control-group">
@@ -640,7 +646,19 @@
 `;
 
 
-    const rows = jsonlData.trim().split("\n").map(line => JSON.parse(line));
+    const parseErrors = [];
+    const rows = jsonlData
+        .trim()
+        .split("\n")
+        .map((line, idx) => {
+            try {
+                return JSON.parse(line);
+            } catch (err) {
+                parseErrors.push({ line: idx + 1, error: String(err) });
+                return null;
+            }
+        })
+        .filter(Boolean);
 
     const data = rows.map(r => {
         const planSteps = r.plan_steps || 0;
@@ -1268,6 +1286,21 @@
         const activeData = getFilteredData();
         renderRunConfig(activeData);
         renderCards(activeData);
+        renderJudgeRationales(activeData);
+        const warning = document.getElementById("dashboard-warning");
+        if (parseErrors.length > 0) {
+            warning.style.display = "block";
+            warning.textContent = `Loaded ${rows.length} scenario rows. Skipped ${parseErrors.length} malformed row(s); first error at row ${parseErrors[0].line}.`;
+        } else if (typeof Plotly === "undefined") {
+            warning.style.display = "block";
+            warning.textContent = `Loaded ${rows.length} scenario rows, but charts are unavailable because Plotly failed to load (offline or blocked CDN).`;
+        } else {
+            warning.style.display = "none";
+            warning.textContent = "";
+        }
+        if (typeof Plotly === "undefined") {
+            return;
+        }
         renderInteractiveScatter(activeData);
         renderPhaseStacked(activeData);
         renderLatencyHistogram(activeData);
@@ -1279,7 +1312,6 @@
         renderGauges(activeData);
         renderStepHeatmap(activeData);
         renderToolAndServerUsage(activeData);
-        renderJudgeRationales(activeData);
     }
 
     document.getElementById("x-axis").addEventListener("change", renderAll);
@@ -1303,7 +1335,11 @@
             "plot-step-heatmap",
             "plot-tool-usage",
             "plot-server-usage"
-        ].forEach(id => Plotly.Plots.resize(document.getElementById(id)));
+        ].forEach(id => {
+            if (typeof Plotly !== "undefined") {
+                Plotly.Plots.resize(document.getElementById(id));
+            }
+        });
     });
 
     populateFilters();

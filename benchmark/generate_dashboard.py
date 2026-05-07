@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import html
+import json
 import re
 from pathlib import Path
 
@@ -34,14 +35,11 @@ def _resolve_template_path(template_path: Path) -> Path:
     )
 
 
-def _escape_jsonl_for_js(jsonl_text: str) -> str:
-    escaped = jsonl_text.replace("`", r"\`").replace("${", r"\${")
-    return escaped.replace("</script>", r"<\/script>")
-
-
 def _replace_jsonl_block(template_html: str, jsonl_text: str) -> str:
     pattern = re.compile(r"const jsonlData = String\.raw`.*?`;", flags=re.DOTALL)
-    replacement = f"const jsonlData = String.raw`{_escape_jsonl_for_js(jsonl_text)}`;"
+    # Encode as a normal JS string literal to avoid template-literal edge cases
+    # (backticks, ${}, and raw escape semantics).
+    replacement = f"const jsonlData = {json.dumps(jsonl_text).replace('</script>', '<\\\\/script>')};"
     updated, count = pattern.subn(lambda _: replacement, template_html, count=1)
     if count != 1:
         raise ValueError(
