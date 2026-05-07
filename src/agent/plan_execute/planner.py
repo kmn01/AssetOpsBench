@@ -64,20 +64,25 @@ def _skills_planning_block(
         return ""
     skills_json = json.dumps(skills_catalog, indent=2)
     return f"""
-Available runnable skills (JSON). Each entry has ``fqid``, ``description``, ``required_args`` (names the user question must supply or imply), and optionally ``asset_types``:
+Available runnable skills (JSON). Each entry has:
+- ``fqid``: unique skill identifier
+- ``description``: what the skill does
+- ``required_args``: argument names that must be explicitly stated or reliably inferable from the user question
+- ``asset_types`` (optional): relevant asset categories
 {skills_json}
 
-Skills-first routing (mandatory when a match exists):
-- Parse the user question for intent and concrete entities (e.g. site name, asset id, equipment tag).
-- If **any** skill in the JSON above matches the user's intent **and** every name in that skill's ``required_args`` list can be inferred from the question, you MUST satisfy the request with **exactly one** tool step and no other tool steps:
-  - #Task1: <brief description; include the chosen skill ``fqid``>
+Skills-first routing (strict policy):
+- Extract the user's intent and concrete entities first (e.g. site name, asset id, equipment tag).
+- If one or more skills match intent, select the single best skill whose ``required_args`` are all present or inferable with high confidence.
+- When such a skill exists, you MUST produce a plan with exactly one step, and that step MUST be:
+  - #Task1: <brief action; include chosen ``fqid`` and resolved arguments>
   - #Server1: skills
   - #Tool1: run_skill
   - #Dependency1: None
-  - #ExpectedOutput1: <what the skill run should return>
-- Do **not** add separate steps on ``iot``, ``fmsr``, ``wo``, ``vibration``, ``utilities``, ``tsfm``, ``knowledge``, or other domain servers when a matching runnable skill exists; the skill orchestrates those internally.
-- If **no** skill matches, or one or more ``required_args`` cannot be derived from the question, plan using the appropriate domain servers and tools as usual.
-- When the skills list is empty, ignore ``skills``/``run_skill`` and use domain servers only.
+  - #ExpectedOutput1: <direct result from that skill execution>
+- Do NOT add additional steps or call domain servers (``iot``, ``fmsr``, ``wo``, ``vibration``, ``utilities``, ``tsfm``, ``knowledge``, etc.) when a qualifying skill exists; skills handle internal orchestration.
+- If no skill qualifies (no intent match, or missing/uncertain required args), do not use ``skills``/``run_skill``; create a normal multi-step domain-server plan instead.
+- If the skills list is empty, ignore ``skills``/``run_skill`` and use domain servers only.
 """
 
 _TASK_RE = re.compile(r"#Task(\d+):\s*(.+)")
