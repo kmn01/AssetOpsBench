@@ -23,6 +23,7 @@ from llm.usage import CompletionUsage
 from servers.common.mcp_stdio import make_stdio_params
 
 from .models import Plan, PlanStep, StepResult
+from .skills_catalog import build_planner_skill_entry
 
 _log = logging.getLogger(__name__)
 
@@ -72,18 +73,25 @@ If a value comes from a list, use the first relevant element.
 
 JSON:"""
 
-# MCP lists ``arguments`` as an opaque object; spell out nested keys for the LLM.
-_RUN_SKILL_ARGS_HINT = """
+# MCP lists ``arguments`` as an opaque object; generic rules + minimal skill JSON.
+_RUN_SKILL_ARGS_HINT_MINIMAL = """
 
 Extra rules for tool ``run_skill`` (skills server):
 - Output MUST be a JSON object with exactly two top-level keys: ``skill_id`` (string) and ``arguments`` (object). Do not flatten skill fields to the top level.
 - Nested keys belong inside ``arguments`` only.
-
-Required ``arguments`` by ``skill_id``:
-- ``assetopsbench/pump_seal_inspection``: ``site_name``, ``asset_id``, ``asset_name``. If the user names one pump token (e.g. PUMP1), use that value for both ``asset_id`` and ``asset_name`` unless prior steps give distinct values.
-- ``assetopsbench_demo/safety_clearance_check``: ``site_name``, ``asset_id``
-- ``assetopsbench_demo/asset_diagnostics_bundle``: ``site_name``, ``asset_id``, ``asset_name`` (same single-token rule as pump when applicable).
+- ``skill_id`` MUST be the full FQID ``pack_id/skill_id`` chosen for this task.
 """
+
+_RUN_SKILL_ARGS_HINT_WITH_CATALOG = (
+    _RUN_SKILL_ARGS_HINT_MINIMAL
+    + """
+- ``skill_id`` MUST be one of the FQIDs listed below.
+- ``arguments`` MUST include every key in that skill's ``required_args`` array (and may include optional keys implied by the task).
+
+Runnable skills for argument resolution (JSON):
+{skills_json}
+"""
+)
 
 
 class Executor:
@@ -118,7 +126,64 @@ class Executor:
                 descriptions[name] = f"  (unavailable: {exc})"
         return descriptions
 
-    async def execute_plan(self, plan: Plan, question: str) -> list[StepResult]:
+    async def fetch_planner_skills_catalog(self) -> list[dict[str, Any]]:
+        """Load runnable skills as minimal JSON rows for planning and arg resolution."""
+        path = self._server_paths.get("skills")
+        if path is None:
+            return []
+        try:
+            raw = await _call_tool(path, "list_skills", {})
+        except Exception as exc:  # noqa: BLE001
+            _log.debug("list_skills failed: %s", exc)
+            return []
+        try:
+            data = json.loads(raw)
+        except json.JSONDecodeError:
+            _log.debug("list_skills returned non-JSON")
+            return []
+        rows = data.get("skills")
+        if not isinstance(rows, list):
+            return []
+        out: list[dict[str, Any]] = []
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            if not row.get("runnable"):
+                continue
+            fqid = (row.get("fqid") or "").strip()
+            if not fqid:
+                continue
+            desc = row.get("description") or ""
+            atypes = row.get("asset_types")
+            asset_types = list(atypes) if isinstance(atypes, list) else None
+            instructions: str | None = None
+            try:
+                man_raw = await _call_tool(
+                    path, "get_skill_manifest", {"skill_id": fqid}
+                )
+                man = json.loads(man_raw)
+            except Exception:  # noqa: BLE001
+                man = {}
+            if isinstance(man, dict) and not man.get("error"):
+                ins = man.get("instructions")
+                instructions = ins if isinstance(ins, str) else None
+            out.append(
+                build_planner_skill_entry(
+                    fqid=fqid,
+                    description=desc,
+                    instructions=instructions,
+                    asset_types=asset_types,
+                )
+            )
+        return out
+
+    async def execute_plan(
+        self,
+        plan: Plan,
+        question: str,
+        *,
+        skills_catalog: list[dict[str, Any]] | None = None,
+    ) -> list[StepResult]:
         """Execute all plan steps in dependency order."""
         ordered = plan.resolved_order()
         total = len(ordered)
@@ -155,7 +220,11 @@ class Executor:
             )
             schema = tool_schemas.get(step.server, {}).get(step.tool, "")
             result = await self.execute_step(
-                step, context, question, tool_schema=schema
+                step,
+                context,
+                question,
+                tool_schema=schema,
+                skills_catalog=skills_catalog,
             )
             if result.success:
                 _log.info("Step %d OK.", step.step_number)
@@ -171,6 +240,7 @@ class Executor:
         context: dict[int, StepResult],
         question: str,
         tool_schema: str = "",
+        skills_catalog: list[dict[str, Any]] | None = None,
     ) -> StepResult:
         """Execute a single plan step.
 
@@ -209,7 +279,13 @@ class Executor:
         t_arg = time.monotonic()
         try:
             resolved_args, arg_usage = await _resolve_args_with_llm(
-                question, step.task, tool_name, tool_schema, context, self._llm
+                question,
+                step.task,
+                tool_name,
+                tool_schema,
+                context,
+                self._llm,
+                skills_catalog=skills_catalog,
             )
         except Exception as exc:  # noqa: BLE001
             return StepResult(
@@ -273,6 +349,8 @@ async def _resolve_args_with_llm(
     tool_schema: str,
     context: dict[int, StepResult],
     llm: LLMBackend,
+    *,
+    skills_catalog: list[dict[str, Any]] | None = None,
 ) -> tuple[dict, CompletionUsage]:
     """Generate tool arguments from the task description and prior step results."""
     context_text = "\n".join(
@@ -286,7 +364,20 @@ async def _resolve_args_with_llm(
         .replace("{context}", context_text or "(none)")
     )
     if tool.strip().lower() == "run_skill":
-        prompt = prompt.rstrip() + _RUN_SKILL_ARGS_HINT
+        if skills_catalog:
+            slim = [
+                {
+                    "fqid": e.get("fqid"),
+                    "required_args": e.get("required_args", []),
+                }
+                for e in skills_catalog
+                if isinstance(e, dict) and e.get("fqid")
+            ]
+            prompt = prompt.rstrip() + _RUN_SKILL_ARGS_HINT_WITH_CATALOG.replace(
+                "{skills_json}", json.dumps(slim, indent=2)
+            )
+        else:
+            prompt = prompt.rstrip() + _RUN_SKILL_ARGS_HINT_MINIMAL
     try:
         raw, usage = await asyncio.wait_for(
             asyncio.to_thread(llm.generate_with_usage, prompt),

@@ -6,8 +6,10 @@ so the executor needs no additional LLM calls — it calls the tool directly.
 
 from __future__ import annotations
 
+import json
 import logging
 import re
+from typing import Any
 
 from llm import LLMBackend
 from llm.usage import CompletionUsage
@@ -54,21 +56,28 @@ Question: {question}
 Plan:
 """
 
-_SKILLS_SERVER_RULES = """\
-- On server ``skills``, tool ``run_skill`` takes JSON arguments ``skill_id`` and
-  ``arguments`` (object). ``skill_id`` MUST be the **full FQID** exactly as in
-  the skills list: ``pack_id/skill_id`` (e.g. ``assetopsbench_demo/safety_clearance_check``).
-  Never pass only the short suffix (e.g. ``safety_clearance_check`` alone).
-- Pump seal / mechanical seal maintenance:
-  ``skill_id`` ``assetopsbench/pump_seal_inspection``;
-  ``arguments``: ``site_name``, ``asset_id``, ``asset_name`` (if only one tag like PUMP1 is known, use it for both ``asset_id`` and ``asset_name``).
-- Safety clearance / readiness checks:
-  ``skill_id`` ``assetopsbench_demo/safety_clearance_check``;
-  ``arguments``: ``site_name``, ``asset_id``.
-- Diagnostics / failure-mode sensor mapping bundle:
-  ``skill_id`` ``assetopsbench_demo/asset_diagnostics_bundle``;
-  ``arguments``: ``site_name``, ``asset_id``, ``asset_name``.
-- If ``skills`` is not in the server list, use iot / fmsr / wo as needed instead.
+
+def _skills_planning_block(
+    has_skills_server: bool, skills_catalog: list[dict[str, Any]]
+) -> str:
+    if not has_skills_server:
+        return ""
+    skills_json = json.dumps(skills_catalog, indent=2)
+    return f"""
+Available runnable skills (JSON). Each entry has ``fqid``, ``description``, ``required_args`` (names the user question must supply or imply), and optionally ``asset_types``:
+{skills_json}
+
+Skills-first routing (mandatory when a match exists):
+- Parse the user question for intent and concrete entities (e.g. site name, asset id, equipment tag).
+- If **any** skill in the JSON above matches the user's intent **and** every name in that skill's ``required_args`` list can be inferred from the question, you MUST satisfy the request with **exactly one** tool step and no other tool steps:
+  - #Task1: <brief description; include the chosen skill ``fqid``>
+  - #Server1: skills
+  - #Tool1: run_skill
+  - #Dependency1: None
+  - #ExpectedOutput1: <what the skill run should return>
+- Do **not** add separate steps on ``iot``, ``fmsr``, ``wo``, ``vibration``, ``utilities``, ``tsfm``, ``knowledge``, or other domain servers when a matching runnable skill exists; the skill orchestrates those internally.
+- If **no** skill matches, or one or more ``required_args`` cannot be derived from the question, plan using the appropriate domain servers and tools as usual.
+- When the skills list is empty, ignore ``skills``/``run_skill`` and use domain servers only.
 """
 
 _TASK_RE = re.compile(r"#Task(\d+):\s*(.+)")
@@ -159,12 +168,14 @@ class Planner:
         self,
         question: str,
         server_descriptions: dict[str, str],
+        skills_catalog: list[dict[str, Any]] | None = None,
     ) -> tuple[Plan, CompletionUsage]:
         """Generate a plan for a question given available servers and their tools.
 
         Args:
             question: The user question to answer.
             server_descriptions: Mapping of server_name -> formatted tool signatures.
+            skills_catalog: Minimal runnable skills JSON for skills-first routing.
 
         Returns:
             The parsed :class:`~.models.Plan` and token usage for the planning LLM
@@ -174,9 +185,8 @@ class Planner:
             f"{name}:\n{desc}" for name, desc in server_descriptions.items()
         )
         valid_servers = ", ".join(sorted(server_descriptions.keys()))
-        skills_rule = (
-            _SKILLS_SERVER_RULES if "skills" in server_descriptions else ""
-        )
+        cat = skills_catalog if skills_catalog is not None else []
+        skills_rule = _skills_planning_block("skills" in server_descriptions, cat)
         prompt = _PLAN_PROMPT.format(
             servers=servers_text,
             question=question,

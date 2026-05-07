@@ -198,3 +198,52 @@ class TestPlanner:
 
         _, _ = Planner(llm).generate_plan("Q", {"iot": "  - sites(): List sites"})
         assert "#Args" not in captured[0]
+
+    def test_generate_plan_prompt_includes_skills_catalog_json(
+        self, mock_llm, monkeypatch
+    ):
+        captured = []
+        llm = mock_llm(_TWO_STEP)
+        original = llm.generate
+        llm.generate = lambda p, temperature=0.0: (
+            captured.append(p),
+            original(p, temperature),
+        )[1]
+
+        catalog = [
+            {
+                "fqid": "pack/skill_x",
+                "description": "Does a thing",
+                "required_args": ["site_name", "asset_id"],
+            }
+        ]
+        _, _ = Planner(llm).generate_plan(
+            "Run skill for P1",
+            {
+                "iot": "  - sites(): List sites",
+                "skills": "  - run_skill(...): Run skill",
+            },
+            catalog,
+        )
+        prompt = captured[0]
+        assert "pack/skill_x" in prompt
+        assert "Skills-first routing" in prompt
+        assert "required_args" in prompt
+
+    def test_generate_plan_without_skills_server_omits_skills_block(
+        self, mock_llm, monkeypatch
+    ):
+        captured = []
+        llm = mock_llm(_TWO_STEP)
+        original = llm.generate
+        llm.generate = lambda p, temperature=0.0: (
+            captured.append(p),
+            original(p, temperature),
+        )[1]
+
+        _, _ = Planner(llm).generate_plan(
+            "Q",
+            {"iot": "  - sites(): List sites"},
+            [{"fqid": "x/y", "description": "z", "required_args": []}],
+        )
+        assert "Skills-first routing" not in captured[0]

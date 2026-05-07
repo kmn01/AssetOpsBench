@@ -120,18 +120,25 @@ class PlanExecuteRunner(AgentRunner):
         server_descriptions = await self._executor.get_server_descriptions()
         discover_ms = (time.monotonic() - t0) * 1000.0
 
+        skills_catalog = await self._executor.fetch_planner_skills_catalog()
+
         # 2. Plan (thread: sync LLM must not block the asyncio event loop)
         _log.info("Planning...")
         t0 = time.monotonic()
         plan, plan_usage = await asyncio.to_thread(
-            self._planner.generate_plan, question, server_descriptions
+            self._planner.generate_plan,
+            question,
+            server_descriptions,
+            skills_catalog,
         )
         plan_ms = (time.monotonic() - t0) * 1000.0
         _log.info("Plan has %d step(s).", len(plan.steps))
 
         # 3. Execute
         t0 = time.monotonic()
-        history = await self._executor.execute_plan(plan, question)
+        history = await self._executor.execute_plan(
+            plan, question, skills_catalog=skills_catalog
+        )
         execute_ms = (time.monotonic() - t0) * 1000.0
 
         # 4. Summarise
