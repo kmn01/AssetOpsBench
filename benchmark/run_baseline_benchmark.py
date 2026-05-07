@@ -3,14 +3,14 @@
 
 Examples:
 
-    WANDB_RUN_NAME="hf_assetops_1scenario_baseline_maverick" \
+    WANDB_RUN_NAME="hf_assetops_5scenario_baseline_maverick" \                                                  
     uv run python benchmark/run_baseline_benchmark.py \
     --source hf \
     --hf-dataset-name ibm-research/AssetOpsBench \
     --hf-split train \
-    --output runs/hf_assetops_1scenario_baseline_maverick.jsonl \
-    --accuracy-mode both
-    --limit 1
+    --output runs/hf_assetops_5scenario_baseline_maverick.jsonl \
+    --accuracy-mode both \
+    --limit 5
 
     WANDB_RUN_NAME="hf_assetops_allscenario_baseline_maverick" \
     uv run python benchmark/run_baseline_benchmark.py \
