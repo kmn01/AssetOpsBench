@@ -7,18 +7,25 @@ dict from the task description, original question, and prior step results.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
+import os
 import re
+import time
 from pathlib import Path
 from typing import Any
 
 from llm import LLMBackend
+from llm.usage import CompletionUsage
 from .models import Plan, PlanStep, StepResult
 
 _log = logging.getLogger(__name__)
 
 _REPO_ROOT = Path(__file__).parent.parent.parent.parent
+_ARG_RESOLUTION_LLM_TIMEOUT_SEC = float(
+    os.environ.get("PLAN_EXECUTE_ARG_LLM_TIMEOUT_SEC", "180")
+)
 
 # Maps agent names to either a uv entry-point name (str) or a script Path.
 # Entry-point names are invoked as ``uv run <name>``; Paths fall back to
@@ -146,6 +153,17 @@ class Executor:
         3. Call the LLM to generate tool arguments from the task and prior results.
         4. Call the tool and return its result.
         """
+        tool_name = (step.tool or "").strip()
+        if not tool_name or tool_name.lower() in ("none", "null"):
+            return StepResult(
+                step_number=step.step_number,
+                task=step.task,
+                server=step.server,
+                response=step.expected_output,
+                tool=tool_name,
+                tool_args=step.tool_args,
+            )
+
         server_path = self._server_paths.get(step.server)
         if server_path is None:
             return StepResult(
@@ -157,32 +175,15 @@ class Executor:
                     f"Unknown server '{step.server}'. "
                     f"Registered servers: {list(self._server_paths)}"
                 ),
-            )
-
-        if not step.tool or step.tool.lower() in ("none", "null"):
-            return StepResult(
-                step_number=step.step_number,
-                task=step.task,
-                server=step.server,
-                response=step.expected_output,
-                tool=step.tool,
+                tool=tool_name,
                 tool_args=step.tool_args,
             )
 
+        t_arg = time.monotonic()
         try:
             _log.info("Step %d: calling LLM to resolve args.", step.step_number)
-            resolved_args = await _resolve_args_with_llm(
-                question, step.task, step.tool, tool_schema, context, self._llm
-            )
-
-            response = await _call_tool(server_path, step.tool, resolved_args)
-            return StepResult(
-                step_number=step.step_number,
-                task=step.task,
-                server=step.server,
-                response=response,
-                tool=step.tool,
-                tool_args=resolved_args,
+            resolved_args, arg_usage = await _resolve_args_with_llm(
+                question, step.task, tool_name, tool_schema, context, self._llm
             )
         except Exception as exc:  # noqa: BLE001
             return StepResult(
@@ -191,9 +192,42 @@ class Executor:
                 server=step.server,
                 response="",
                 error=str(exc),
-                tool=step.tool,
+                tool=tool_name,
                 tool_args=step.tool_args,
+                arg_resolution_ms=(time.monotonic() - t_arg) * 1000.0,
             )
+        arg_ms = (time.monotonic() - t_arg) * 1000.0
+
+        t_mcp = time.monotonic()
+        try:
+            response = await _call_tool(server_path, tool_name, resolved_args)
+        except Exception as exc:  # noqa: BLE001
+            return StepResult(
+                step_number=step.step_number,
+                task=step.task,
+                server=step.server,
+                response="",
+                error=str(exc),
+                tool=tool_name,
+                tool_args=resolved_args,
+                arg_resolution_ms=arg_ms,
+                mcp_call_ms=(time.monotonic() - t_mcp) * 1000.0,
+                arg_prompt_tokens=arg_usage.prompt_tokens,
+                arg_completion_tokens=arg_usage.completion_tokens,
+            )
+
+        return StepResult(
+            step_number=step.step_number,
+            task=step.task,
+            server=step.server,
+            response=response,
+            tool=tool_name,
+            tool_args=resolved_args,
+            arg_resolution_ms=arg_ms,
+            mcp_call_ms=(time.monotonic() - t_mcp) * 1000.0,
+            arg_prompt_tokens=arg_usage.prompt_tokens,
+            arg_completion_tokens=arg_usage.completion_tokens,
+        )
 
 
 # ── arg resolution ────────────────────────────────────────────────────────────
@@ -206,7 +240,7 @@ async def _resolve_args_with_llm(
     tool_schema: str,
     context: dict[int, StepResult],
     llm: LLMBackend,
-) -> dict:
+) -> tuple[dict, CompletionUsage]:
     """Generate tool arguments from the task description and prior step results."""
     context_text = "\n".join(
         f"Step {n}: {r.response}" for n, r in sorted(context.items())
@@ -218,16 +252,25 @@ async def _resolve_args_with_llm(
         .replace("{tool_schema}", tool_schema or "(unknown)")
         .replace("{context}", context_text or "(none)")
     )
-    raw = llm.generate(prompt)
+    try:
+        raw, usage = await asyncio.wait_for(
+            asyncio.to_thread(llm.generate_with_usage, prompt),
+            timeout=_ARG_RESOLUTION_LLM_TIMEOUT_SEC,
+        )
+    except TimeoutError as exc:
+        raise TimeoutError(
+            f"LLM arg resolution exceeded {_ARG_RESOLUTION_LLM_TIMEOUT_SEC}s "
+            "(set PLAN_EXECUTE_ARG_LLM_TIMEOUT_SEC to adjust)"
+        ) from exc
     resolved = _parse_json(raw)
     if resolved is None:
         _log.warning(
             "Tool '%s': arg resolution returned no parseable JSON (response: %r…)",
             tool,
-            raw[:120],
+            (raw[:120] if raw else ""),
         )
-        return {}
-    return resolved
+        return {}, usage
+    return resolved, usage
 
 
 def _parse_json(raw: str) -> dict | None:

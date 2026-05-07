@@ -1,12 +1,14 @@
 """MCP plan-execute orchestration package."""
 
 from .runner import AgentRunner
+from .plan_execute.metrics import PlanExecuteMetrics
 from .plan_execute.runner import PlanExecuteRunner
 from .models import OrchestratorResult
 from .plan_execute.models import Plan, PlanStep, StepResult
 
 __all__ = [
     "AgentRunner",
+    "PlanExecuteMetrics",
     "PlanExecuteRunner",
     "OrchestratorResult",
     "Plan",

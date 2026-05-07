@@ -7,6 +7,8 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from llm import LLMBackend
+
 from agent.plan_execute.executor import (
     Executor,
     _parse_json,
@@ -83,14 +85,14 @@ def _make_step(
     )
 
 
-class _CapturingLLM:
+class _CapturingLLM(LLMBackend):
     """Records every generate() prompt and returns a canned response."""
 
     def __init__(self, response: str = "{}") -> None:
         self.prompts: list[str] = []
         self._response = response
 
-    def generate(self, prompt: str, **_kw) -> str:
+    def generate(self, prompt: str, temperature: float = 0.0) -> str:
         self.prompts.append(prompt)
         return self._response
 
@@ -115,6 +117,19 @@ async def test_orchestrator_run_returns_result(sequential_llm):
     assert result.answer == _FINAL_ANSWER
     assert len(result.plan.steps) == 2
     assert len(result.history) == 2
+    assert result.metrics is not None
+    assert result.metrics.e2e_ms > 0
+    assert result.metrics.plan_ms > 0
+    assert result.metrics.discover_ms >= 0
+    assert result.metrics.tool_calls_attempted == 2
+    assert result.metrics.tool_calls_succeeded == 2
+    assert result.metrics.success is True
+    assert "token_usage" in result.metrics.to_json_dict()
+    tu = result.metrics.to_json_dict()["token_usage"]
+    assert "llm_totals" in tu and "plan" in tu
+    for row in result.metrics.step_timings_ms:
+        assert "arg_resolution_ms" in row
+        assert "mcp_call_ms" in row
 
 
 @pytest.mark.anyio
@@ -209,6 +224,23 @@ async def test_executor_no_tool_step_skips_llm():
     assert result.response == "42"
     assert result.success is True
     assert llm.prompts == []  # LLM was never called
+
+
+@pytest.mark.anyio
+async def test_executor_no_tool_step_ignores_bad_server_name():
+    """Planner sometimes emits #ServerN: none; no-tool steps must not require lookup."""
+    from pathlib import Path
+
+    llm = _CapturingLLM()
+    executor = Executor(llm, server_paths={"iot": Path("/fake/server.py")})
+
+    step = _make_step(1, server="none", tool="none", expected_output="ok")
+    result = await executor.execute_step(step, {}, "Q")
+    assert result.success and result.response == "ok"
+
+    step2 = _make_step(2, server="", tool="none", expected_output="ok2")
+    result2 = await executor.execute_step(step2, {}, "Q")
+    assert result2.success and result2.response == "ok2"
 
 
 @pytest.mark.anyio
@@ -435,7 +467,7 @@ async def test_resolve_args_with_llm_uses_context(mock_llm):
             step_number=1, task="t", server="a", response='{"assets": ["CH-1", "CH-2"]}'
         )
     }
-    result = await _resolve_args_with_llm(
+    result, _usage = await _resolve_args_with_llm(
         "What sensors does CH-1 have?",
         "get sensors",
         "sensors",
@@ -450,7 +482,7 @@ async def test_resolve_args_with_llm_uses_context(mock_llm):
 async def test_resolve_args_with_llm_fallback_on_bad_json(mock_llm):
     llm = mock_llm("I cannot determine the value.")
     ctx = {1: StepResult(step_number=1, task="t", server="a", response="data")}
-    result = await _resolve_args_with_llm("task", "task", "tool", "", ctx, llm)
+    result, _usage = await _resolve_args_with_llm("task", "task", "tool", "", ctx, llm)
     assert result == {}
 
 
@@ -463,7 +495,7 @@ async def test_resolve_args_with_llm_question_in_prompt():
         "sites",
         "",
         {},
-        llm,  # type: ignore[arg-type]
+        llm,
     )
     assert "What sites exist?" in llm.prompts[0]
 
@@ -471,7 +503,7 @@ async def test_resolve_args_with_llm_question_in_prompt():
 @pytest.mark.anyio
 async def test_resolve_args_with_llm_tool_in_prompt():
     llm = _CapturingLLM("{}")
-    await _resolve_args_with_llm("Q", "List IoT sites", "sites", "", {}, llm)  # type: ignore[arg-type]
+    await _resolve_args_with_llm("Q", "List IoT sites", "sites", "", {}, llm)
     assert "sites" in llm.prompts[0]
 
 
@@ -479,7 +511,7 @@ async def test_resolve_args_with_llm_tool_in_prompt():
 async def test_resolve_args_with_llm_schema_in_prompt():
     """Tool parameter schema appears in the prompt so LLM uses correct names."""
     llm = _CapturingLLM('{"site_name": "MAIN"}')
-    await _resolve_args_with_llm(  # type: ignore[arg-type]
+    await _resolve_args_with_llm(
         "Q", "List assets", "assets", "site_name: string", {}, llm
     )
     assert "site_name: string" in llm.prompts[0]
@@ -489,7 +521,7 @@ async def test_resolve_args_with_llm_schema_in_prompt():
 async def test_resolve_args_with_llm_unknown_schema_shows_sentinel():
     """Empty schema renders as '(unknown)' in the prompt."""
     llm = _CapturingLLM("{}")
-    await _resolve_args_with_llm("Q", "task", "tool", "", {}, llm)  # type: ignore[arg-type]
+    await _resolve_args_with_llm("Q", "task", "tool", "", {}, llm)
     assert "(unknown)" in llm.prompts[0]
 
 
@@ -500,14 +532,14 @@ async def test_resolve_args_with_llm_context_in_prompt():
     ctx = {
         1: StepResult(step_number=1, task="t", server="a", response="step-one-result")
     }
-    await _resolve_args_with_llm("Q", "task", "tool", "", ctx, llm)  # type: ignore[arg-type]
+    await _resolve_args_with_llm("Q", "task", "tool", "", ctx, llm)
     assert "step-one-result" in llm.prompts[0]
 
 
 @pytest.mark.anyio
 async def test_resolve_args_with_llm_empty_context_shows_none():
     llm = _CapturingLLM("{}")
-    await _resolve_args_with_llm("Q", "task", "tool", "", {}, llm)  # type: ignore[arg-type]
+    await _resolve_args_with_llm("Q", "task", "tool", "", {}, llm)
     assert "(none)" in llm.prompts[0]
 
 

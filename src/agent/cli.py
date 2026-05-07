@@ -152,6 +152,9 @@ async def _run(args: argparse.Namespace) -> None:
         output = {
             "question": result.question,
             "answer": result.answer,
+            "metrics": (
+                result.metrics.to_json_dict() if result.metrics is not None else None
+            ),
             "plan": [
                 {
                     "step": s.step_number,

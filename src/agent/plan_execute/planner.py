@@ -10,6 +10,7 @@ import logging
 import re
 
 from llm import LLMBackend
+from llm.usage import CompletionUsage
 from .models import Plan, PlanStep
 
 _log = logging.getLogger(__name__)
@@ -53,7 +54,20 @@ _SERVER_RE = re.compile(r"#Server(\d+):\s*(.+)")
 _TOOL_RE = re.compile(r"#Tool(\d+):\s*(.+)")
 _DEP_RE = re.compile(r"#Dependency(\d+):\s*(.+)")
 _OUTPUT_RE = re.compile(r"#ExpectedOutput(\d+):\s*(.+)")
-_DEP_NUM_RE = re.compile(r"#S(\d+)")
+
+
+def _parse_dependency_numbers(raw_dep: str) -> list[int]:
+    """Parse dependency references from planner output with tolerant fallbacks."""
+    deps = [int(x) for x in re.findall(r"#S(\d+)", raw_dep, flags=re.IGNORECASE)]
+    if deps:
+        return deps
+    deps = [int(x) for x in re.findall(r"#T(\d+)", raw_dep, flags=re.IGNORECASE)]
+    if deps:
+        return deps
+    if re.fullmatch(r"[\d\s,;]+", raw_dep):
+        nums = [s for s in re.split(r"[\s,;]+", raw_dep) if s.strip()]
+        return [int(s) for s in nums]
+    return []
 
 
 def parse_plan(raw: str) -> Plan:
@@ -76,7 +90,7 @@ def parse_plan(raw: str) -> Plan:
         if raw_dep.lower() == "none":
             dependencies = []
         else:
-            dependencies = [int(x) for x in _DEP_NUM_RE.findall(raw_dep)]
+            dependencies = _parse_dependency_numbers(raw_dep)
 
             # Make sure dependency references only point to earlier valid steps.
             if not dependencies:
@@ -113,7 +127,7 @@ class Planner:
         self,
         question: str,
         server_descriptions: dict[str, str],
-    ) -> Plan:
+    ) -> tuple[Plan, CompletionUsage]:
         """Generate a plan for a question given available servers and their tools.
 
         Args:
@@ -121,11 +135,11 @@ class Planner:
             server_descriptions: Mapping of server_name -> formatted tool signatures.
 
         Returns:
-            A Plan where each PlanStep includes the tool to call and its arguments.
+            The parsed plan and token-usage metadata from the planner LLM call.
         """
         servers_text = "\n\n".join(
             f"{name}:\n{desc}" for name, desc in server_descriptions.items()
         )
         prompt = _PLAN_PROMPT.format(servers=servers_text, question=question)
-        raw = self._llm.generate(prompt)
-        return parse_plan(raw)
+        raw, usage = self._llm.generate_with_usage(prompt)
+        return parse_plan(raw), usage
