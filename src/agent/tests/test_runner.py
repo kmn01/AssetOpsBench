@@ -448,6 +448,10 @@ async def test_pipeline_uses_llm_args_for_each_step(sequential_llm):
             new=AsyncMock(return_value=_MOCK_TOOLS),
         ),
         patch("agent.plan_execute.executor._call_tool", new=call_mock),
+        patch(
+            "agent.plan_execute.executor.Executor.fetch_planner_skills_catalog",
+            new=AsyncMock(return_value=[]),
+        ),
     ):
         result = await PlanExecuteRunner(llm).run("List all assets at site MAIN")
 

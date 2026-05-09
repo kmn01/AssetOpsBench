@@ -6,8 +6,10 @@ so the executor needs no additional LLM calls — it calls the tool directly.
 
 from __future__ import annotations
 
+import json
 import logging
 import re
+from typing import Any
 
 from llm import LLMBackend
 from llm.usage import CompletionUsage
@@ -54,21 +56,32 @@ Question: {question}
 Plan:
 """
 
-_SKILLS_SERVER_RULES = """\
-- On server ``skills``, tool ``run_skill`` takes JSON arguments ``skill_id`` and
-  ``arguments`` (object). ``skill_id`` MUST be the **full FQID** exactly as in
-  the skills list: ``pack_id/skill_id`` (e.g. ``assetopsbench_demo/safety_clearance_check``).
-  Never pass only the short suffix (e.g. ``safety_clearance_check`` alone).
-- Pump seal / mechanical seal maintenance:
-  ``skill_id`` ``assetopsbench/pump_seal_inspection``;
-  ``arguments``: ``site_name``, ``asset_id``, ``asset_name`` (if only one tag like PUMP1 is known, use it for both ``asset_id`` and ``asset_name``).
-- Safety clearance / readiness checks:
-  ``skill_id`` ``assetopsbench_demo/safety_clearance_check``;
-  ``arguments``: ``site_name``, ``asset_id``.
-- Diagnostics / failure-mode sensor mapping bundle:
-  ``skill_id`` ``assetopsbench_demo/asset_diagnostics_bundle``;
-  ``arguments``: ``site_name``, ``asset_id``, ``asset_name``.
-- If ``skills`` is not in the server list, use iot / fmsr / wo as needed instead.
+def _skills_planning_block(
+    has_skills_server: bool, skills_catalog: list[dict[str, Any]]
+) -> str:
+    if not has_skills_server:
+        return ""
+    skills_json = json.dumps(skills_catalog, indent=2)
+    return f"""
+Available runnable skills (JSON). Each entry has:
+- ``fqid``: unique skill identifier
+- ``description``: what the skill does
+- ``required_args``: argument names that must be explicitly stated or reliably inferable from the user question
+- ``asset_types`` (optional): relevant asset categories
+{skills_json}
+
+Skills-first routing (strict policy):
+- Extract the user's intent and concrete entities first (e.g. site name, asset id, equipment tag).
+- If one or more skills match intent, select the single best skill whose ``required_args`` are all present or inferable with high confidence.
+- When such a skill exists, you MUST produce a plan with exactly one step, and that step MUST be:
+  - #Task1: <brief action; include chosen ``fqid`` and resolved arguments>
+  - #Server1: skills
+  - #Tool1: run_skill
+  - #Dependency1: None
+  - #ExpectedOutput1: <direct result from that skill execution>
+- Do NOT add additional steps or call domain servers (``iot``, ``fmsr``, ``wo``, ``vibration``, ``utilities``, ``tsfm``, ``knowledge``, etc.) when a qualifying skill exists; skills handle internal orchestration.
+- If no skill qualifies (no intent match, or missing/uncertain required args), do not use ``skills``/``run_skill``; create a normal multi-step domain-server plan instead.
+- If the skills list is empty, ignore ``skills``/``run_skill`` and use domain servers only.
 """
 
 _TASK_RE = re.compile(r"#Task(\d+):\s*(.+)")
@@ -159,12 +172,14 @@ class Planner:
         self,
         question: str,
         server_descriptions: dict[str, str],
+        skills_catalog: list[dict[str, Any]] | None = None,
     ) -> tuple[Plan, CompletionUsage]:
         """Generate a plan for a question given available servers and their tools.
 
         Args:
             question: The user question to answer.
             server_descriptions: Mapping of server_name -> formatted tool signatures.
+            skills_catalog: Minimal runnable skills JSON for skills-first routing.
 
         Returns:
             The parsed :class:`~.models.Plan` and token usage for the planning LLM
@@ -174,9 +189,8 @@ class Planner:
             f"{name}:\n{desc}" for name, desc in server_descriptions.items()
         )
         valid_servers = ", ".join(sorted(server_descriptions.keys()))
-        skills_rule = (
-            _SKILLS_SERVER_RULES if "skills" in server_descriptions else ""
-        )
+        cat = skills_catalog if skills_catalog is not None else []
+        skills_rule = _skills_planning_block("skills" in server_descriptions, cat)
         prompt = _PLAN_PROMPT.format(
             servers=servers_text,
             question=question,

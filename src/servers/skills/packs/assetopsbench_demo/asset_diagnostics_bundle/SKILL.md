@@ -57,10 +57,11 @@ Use this skill when the user asks for diagnostics, root-cause analysis, or under
     {
       "name": "sensor_failure_mapping",
       "server": "fmsr",
-      "tool": "map_failure_modes_to_sensors",
+      "tool": "get_failure_mode_sensor_mapping",
       "arguments": {
-        "failure_modes": "$failure_modes",
-        "sensors": "$iot_sensors"
+        "asset_name": "$asset_name",
+        "failure_modes": "$failure_modes.failure_modes",
+        "sensors": "$iot_sensors.sensors"
       }
     }
   ]

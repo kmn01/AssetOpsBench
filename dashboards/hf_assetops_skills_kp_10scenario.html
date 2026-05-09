@@ -1,0 +1,1289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Benchmark: hf_skills_kp_smoke.jsonl</title>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-top: #f4f1e8;
+            --bg-bottom: #deeef6;
+            --panel: #ffffff;
+            --text: #1d2a33;
+            --muted: #51606b;
+            --accent: #00777e;
+            --accent-2: #e4632a;
+            --line: #d8e1e8;
+            --chip: #f1f5f8;
+            --radius: 14px;
+            --shadow: 0 8px 28px rgba(10, 25, 35, 0.08);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: "Space Grotesk", sans-serif;
+            color: var(--text);
+            background:
+                radial-gradient(circle at 8% 12%, rgba(255, 255, 255, 0.7) 0, rgba(255, 255, 255, 0) 38%),
+                radial-gradient(circle at 92% 18%, rgba(0, 119, 126, 0.15) 0, rgba(0, 119, 126, 0) 40%),
+                linear-gradient(140deg, var(--bg-top), var(--bg-bottom));
+            min-height: 100vh;
+            padding: 26px;
+        }
+
+        .container {
+            max-width: 1500px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.86);
+            backdrop-filter: blur(6px);
+            border-radius: 20px;
+            box-shadow: var(--shadow);
+            padding: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.6);
+        }
+
+        .header {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: flex-end;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 18px;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: clamp(1.3rem, 2.4vw, 2rem);
+            letter-spacing: 0.01em;
+        }
+
+        .subtitle {
+            margin-top: 4px;
+            color: var(--muted);
+            font-size: 0.95rem;
+        }
+
+        .source {
+            margin: 0;
+            color: var(--muted);
+            font-size: 0.9rem;
+            background: var(--chip);
+            border-radius: 999px;
+            padding: 8px 12px;
+        }
+
+        .source a {
+            color: var(--accent);
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .source a:hover {
+            text-decoration: underline;
+        }
+
+        .config-strip {
+            margin: 0 0 14px;
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            padding: 10px 12px;
+            background: rgba(255, 255, 255, 0.92);
+        }
+
+        .config-title {
+            font-size: 0.8rem;
+            color: var(--muted);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .config-items {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .config-chip {
+            background: var(--chip);
+            border: 1px solid #d7e2ea;
+            border-radius: 999px;
+            padding: 6px 10px;
+            font-size: 0.82rem;
+            color: #214151;
+        }
+
+        .metric-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+            gap: 12px;
+            margin: 16px 0 22px;
+        }
+
+        .card {
+            background: var(--panel);
+            border-radius: var(--radius);
+            padding: 14px;
+            border: 1px solid var(--line);
+            box-shadow: 0 4px 16px rgba(15, 43, 56, 0.05);
+            transition: transform 220ms ease, box-shadow 220ms ease;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 22px rgba(15, 43, 56, 0.1);
+        }
+
+        .card-label {
+            color: var(--muted);
+            font-size: 0.82rem;
+            margin-bottom: 8px;
+        }
+
+        .card-value {
+            font-family: "IBM Plex Mono", monospace;
+            font-size: 1.22rem;
+            color: var(--text);
+            font-weight: 500;
+        }
+
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 18px;
+            padding: 14px;
+            border-radius: var(--radius);
+            border: 1px solid var(--line);
+            background: var(--chip);
+        }
+
+        .filter-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 12px;
+            padding: 12px;
+            border-radius: var(--radius);
+            border: 1px solid var(--line);
+            background: rgba(255, 255, 255, 0.9);
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            min-width: 210px;
+        }
+
+        .filter-group.scenario {
+            min-width: 320px;
+            flex: 1;
+        }
+
+        select[multiple] {
+            min-height: 82px;
+            padding: 6px;
+        }
+
+        .filter-hint {
+            font-size: 0.76rem;
+            color: var(--muted);
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            min-width: 190px;
+        }
+
+        label {
+            font-size: 0.82rem;
+            color: var(--muted);
+        }
+
+        select {
+            padding: 9px 10px;
+            border-radius: 10px;
+            border: 1px solid #c5d3dd;
+            font-family: "Space Grotesk", sans-serif;
+            background: white;
+        }
+
+        .section-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(320px, 1fr));
+            gap: 14px;
+            margin-top: 14px;
+        }
+
+        .panel {
+            border-radius: var(--radius);
+            border: 1px solid var(--line);
+            background: white;
+            padding: 12px;
+            box-shadow: 0 4px 14px rgba(12, 35, 48, 0.05);
+            animation: fadeInUp 360ms ease both;
+        }
+
+        .panel h3 {
+            margin: 0 0 8px;
+            font-size: 0.98rem;
+            color: #123548;
+            letter-spacing: 0.01em;
+        }
+
+        .plot {
+            width: 100%;
+            min-height: 300px;
+        }
+
+        .plot.tall {
+            min-height: 380px;
+        }
+
+        .plot.xtall {
+            min-height: 440px;
+        }
+
+        .span-2 {
+            grid-column: span 2;
+        }
+
+        .rationale-toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+        }
+
+        .rationale-toolbar .filter-hint {
+            margin: 0;
+        }
+
+        .rationale-legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin: 0 0 10px;
+        }
+
+        .rationale-legend-item {
+            font-size: 0.76rem;
+            color: #244253;
+            background: #eef5f9;
+            border: 1px solid #d7e2ea;
+            border-radius: 999px;
+            padding: 4px 8px;
+        }
+
+        .rationale-list {
+            display: grid;
+            gap: 10px;
+            max-height: 460px;
+            overflow: auto;
+            padding-right: 2px;
+        }
+
+        .rationale-item {
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            padding: 10px;
+            background: #fbfeff;
+        }
+
+        .rationale-item.fail {
+            border-left: 4px solid #e4632a;
+        }
+
+        .rationale-item.pass {
+            border-left: 4px solid #63b995;
+        }
+
+        .rationale-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 6px;
+            flex-wrap: wrap;
+        }
+
+        .rationale-id {
+            font-family: "IBM Plex Mono", monospace;
+            font-size: 0.88rem;
+            color: #15384a;
+        }
+
+        .rationale-status {
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            border: 1px solid #d3dee6;
+            background: #edf3f7;
+            color: #2f4454;
+        }
+
+        .rationale-status.fail {
+            background: #fff1e9;
+            color: #8f3812;
+            border-color: #f2c6b1;
+        }
+
+        .rationale-status.pass {
+            background: #eaf9f3;
+            color: #1b6b4f;
+            border-color: #b6e3d2;
+        }
+
+        .rationale-meta {
+            font-size: 0.8rem;
+            color: var(--muted);
+            margin-bottom: 6px;
+        }
+
+        .rationale-text {
+            margin: 0;
+            color: #1f3340;
+            font-size: 0.88rem;
+            line-height: 1.45;
+            white-space: pre-wrap;
+        }
+
+        .rationale-block-title {
+            margin: 8px 0 6px;
+            font-size: 0.8rem;
+            color: #2a4a5a;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .rationale-candidate {
+            margin: 0;
+            color: #1f3340;
+            font-size: 0.86rem;
+            line-height: 1.45;
+            white-space: pre-wrap;
+            max-height: 220px;
+            overflow: auto;
+            padding: 8px;
+            border: 1px solid #d8e3eb;
+            border-radius: 8px;
+            background: #f9fcfe;
+        }
+
+        .rationale-characteristic {
+            margin: 0;
+            color: #1f3340;
+            font-size: 0.86rem;
+            line-height: 1.45;
+            white-space: pre-wrap;
+            max-height: 220px;
+            overflow: auto;
+            padding: 8px;
+            border: 1px solid #d8e3eb;
+            border-radius: 8px;
+            background: #f6faf3;
+        }
+
+        .rationale-formula {
+            margin: 0 0 8px;
+            font-family: "IBM Plex Mono", monospace;
+            font-size: 0.78rem;
+            line-height: 1.4;
+            color: #244253;
+            background: #f2f7fa;
+            border: 1px solid #d8e3eb;
+            border-radius: 8px;
+            padding: 7px 8px;
+            overflow-x: auto;
+            white-space: nowrap;
+        }
+
+        .rationale-empty {
+            border: 1px dashed var(--line);
+            border-radius: 10px;
+            padding: 12px;
+            color: var(--muted);
+            background: #fafcfe;
+            font-size: 0.86rem;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @media (max-width: 980px) {
+            body {
+                padding: 16px;
+            }
+
+            .container {
+                padding: 16px;
+            }
+
+            .section-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .span-2 {
+                grid-column: span 1;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <div>
+            <h1>AssetOpsBench Evaluation Dashboard (LLM Judge)</h1>
+            <div class="subtitle">Static dashboard with latency, cost, reliability, and judge-based accuracy diagnostics.</div>
+        </div>
+        <div class="source">
+            Data source: <a href="runs/hf_skills_kp_smoke.jsonl" target="_blank" rel="noreferrer">hf_skills_kp_smoke.jsonl</a>
+        </div>
+    </div>
+
+    <div class="metric-grid">
+        <div class="card"><div class="card-label">Scenario Count</div><div class="card-value" id="m-count">-</div></div>
+        <div class="card"><div class="card-label">Success Rate</div><div class="card-value" id="m-success-rate">-</div></div>
+        <div class="card"><div class="card-label">Mean E2E (ms)</div><div class="card-value" id="m-mean-e2e">-</div></div>
+        <div class="card"><div class="card-label">Mean Accuracy</div><div class="card-value" id="m-mean-acc">-</div></div>
+        <div class="card"><div class="card-label">Accuracy Pass Rate</div><div class="card-value" id="m-acc-pass-rate">-</div></div>
+        <div class="card"><div class="card-label">Mean Context Utilization</div><div class="card-value" id="m-context-util">-</div></div>
+    </div>
+
+    <div class="config-strip">
+        <div class="config-title">Configurations Used To Generate Displayed Metrics</div>
+        <div class="config-items" id="run-config-items"></div>
+    </div>
+
+    <div class="filter-bar">
+        <div class="filter-group">
+            <label for="category-filter">Category Filter</label>
+            <select id="category-filter">
+                <option value="__all__">All Categories</option>
+            </select>
+        </div>
+        <div class="filter-group scenario">
+            <label for="scenario-filter">Scenario IDs</label>
+            <select id="scenario-filter" multiple></select>
+            <div class="filter-hint">Multi-select to focus charts. Empty selection means all scenarios.</div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <div class="control-group">
+            <label for="x-axis">X-Axis:</label>
+            <select id="x-axis">
+                <option value="e2e_ms">End-to-End Latency (ms)</option>
+                <option value="token_total_tokens">Total Tokens</option>
+                <option value="plan_steps">Steps Taken</option>
+                <option value="accuracy_score">Accuracy Score</option>
+                <option value="tool_calls_attempted">Tool Calls Attempted</option>
+                <option value="ms_per_step">ms per Step</option>
+                <option value="tokens_per_step">Tokens per Step</option>
+                <option value="accuracy_per_1k_tokens">Accuracy per 1k Tokens</option>
+            </select>
+        </div>
+        <div class="control-group">
+            <label for="y-axis">Y-Axis:</label>
+            <select id="y-axis">
+                <option value="e2e_ms">End-to-End Latency (ms)</option>
+                <option value="token_total_tokens" selected>Total Tokens</option>
+                <option value="plan_steps">Steps Taken</option>
+                <option value="accuracy_score">Accuracy Score</option>
+                <option value="tool_calls_attempted">Tool Calls Attempted</option>
+                <option value="ms_per_step">ms per Step</option>
+                <option value="tokens_per_step">Tokens per Step</option>
+                <option value="accuracy_per_1k_tokens">Accuracy per 1k Tokens</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="section-grid">
+        <div class="panel span-2">
+            <h3>Interactive Scenario Scatter</h3>
+            <div id="plot-scatter" class="plot tall"></div>
+        </div>
+
+        <div class="panel">
+            <h3>Phase Breakdown by Scenario</h3>
+            <div id="plot-phase-stacked" class="plot"></div>
+        </div>
+        <div class="panel">
+            <h3>Latency Distribution</h3>
+            <div id="plot-latency-hist" class="plot"></div>
+        </div>
+
+        <div class="panel">
+            <h3>Token Usage by LLM Phase</h3>
+            <div id="plot-token-stacked" class="plot"></div>
+        </div>
+        <div class="panel">
+            <h3>Prompt vs Completion Tokens</h3>
+            <div id="plot-prompt-completion" class="plot"></div>
+        </div>
+
+        <div class="panel">
+            <h3>Accuracy vs Cost Bubble</h3>
+            <div id="plot-acc-cost" class="plot"></div>
+        </div>
+        <div class="panel">
+            <h3>Execution Efficiency</h3>
+            <div id="plot-efficiency" class="plot"></div>
+        </div>
+
+        <div class="panel">
+            <h3>Category Latency Comparison</h3>
+            <div id="plot-box-latency" class="plot"></div>
+        </div>
+        <div class="panel">
+            <h3>Category Token Comparison</h3>
+            <div id="plot-box-tokens" class="plot"></div>
+        </div>
+
+        <div class="panel">
+            <h3>Category Accuracy Comparison</h3>
+            <div id="plot-box-accuracy" class="plot"></div>
+        </div>
+        <div class="panel">
+            <h3>Success and Accuracy Gauges</h3>
+            <div id="plot-gauges" class="plot"></div>
+        </div>
+
+        <div class="panel span-2">
+            <h3>Step Execution Heatmap (ms)</h3>
+            <div id="plot-step-heatmap" class="plot xtall"></div>
+        </div>
+
+        <div class="panel">
+            <h3>Tool Usage Count and Mean MCP Time</h3>
+            <div id="plot-tool-usage" class="plot"></div>
+        </div>
+        <div class="panel">
+            <h3>Server Call Counts</h3>
+            <div id="plot-server-usage" class="plot"></div>
+        </div>
+
+        <div class="panel span-2">
+            <h3>Judge Rationale Explorer</h3>
+            <div class="rationale-toolbar">
+                <div class="filter-hint">Uses the same category/scenario filters above. Default view focuses on failures.</div>
+                <div class="control-group" style="min-width: 230px;">
+                    <label for="rationale-view">Rationale View</label>
+                    <select id="rationale-view">
+                        <option value="failed" selected>Failed Scenarios Only</option>
+                        <option value="all">All Scenarios</option>
+                    </select>
+                </div>
+            </div>
+            <div class="rationale-legend">
+                <span class="rationale-legend-item"><strong>task</strong>: task_completion</span>
+                <span class="rationale-legend-item"><strong>data</strong>: data_retrieval_accuracy</span>
+                <span class="rationale-legend-item"><strong>verify</strong>: generalized_result_verification</span>
+                <span class="rationale-legend-item"><strong>seq</strong>: agent_sequence_correct</span>
+                <span class="rationale-legend-item"><strong>clarity</strong>: clarity_and_justification</span>
+                <span class="rationale-legend-item"><strong>not_hall</strong>: NOT hallucinations</span>
+            </div>
+            <div id="judge-rationale-list" class="rationale-list"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Static JSONL embedded directly so this dashboard is portable and file-based.
+    const jsonlData = "{\"discover_ms\": 11657.888, \"plan_ms\": 4285.517, \"execute_ms\": 846.921, \"summarize_ms\": 4106.102, \"e2e_ms\": 24047.573, \"phase_ms\": {\"discover\": 11657.888, \"plan\": 4285.517, \"execute\": 846.921, \"summarize\": 4106.102}, \"success\": true, \"plan_steps\": 1, \"history_steps\": 1, \"tool_calls_attempted\": 1, \"tool_calls_succeeded\": 1, \"failed_steps\": 0, \"step_timings_ms\": [{\"step_number\": 1, \"server\": \"iot\", \"tool\": \"sites\", \"success\": true, \"error\": null, \"arg_resolution_ms\": 231.648, \"mcp_call_ms\": 310.725, \"step_execute_ms\": 542.373, \"arg_prompt_tokens\": 202, \"arg_completion_tokens\": 2}], \"token_usage\": {\"plan\": {\"prompt_tokens\": 5895, \"completion_tokens\": 46, \"total_tokens\": 5941}, \"summarize\": {\"prompt_tokens\": 409, \"completion_tokens\": 298, \"total_tokens\": 707}, \"execute_arg_resolution\": {\"prompt_tokens\": 202, \"completion_tokens\": 2, \"total_tokens\": 204}, \"llm_totals\": {\"prompt_tokens\": 6506, \"completion_tokens\": 346, \"total_tokens\": 6852}, \"llm_prompt_tokens_reported\": true, \"llm_completion_tokens_reported\": true}, \"question\": \"What IoT sites are available?\", \"model_id\": \"watsonx/meta-llama/llama-4-maverick-17b-128e-instruct-fp8\", \"scenario_id\": 1, \"scenario_type\": \"IoT\", \"git_sha\": \"d78793f\", \"error\": null, \"scenario_category\": \"Knowledge Query\", \"scenario_source\": \"hf\", \"synthetic\": false, \"synthetic_parent_id\": null, \"characteristic_form\": \"The expected response should be the return value of all sites, either as text or as a reference to a file\", \"candidate_answer\": \"The available IoT sites for the industrial asset operations system have been retrieved. According to the results from Step 1, the list of available IoT sites is as follows:\\n\\nThe industrial asset operations system has access to one IoT site, which is identified as \\\"MAIN\\\". This information was obtained directly from the server designated as \\\"iot\\\". The retrieval process involved querying the server for the list of available IoT sites, and the response contained a single site named \\\"MAIN\\\".\\n\\nTo provide a comprehensive understanding, the process involved in retrieving this information included a direct query to the \\\"iot\\\" server. The server responded with a JSON object containing a list of sites, which included \\\"MAIN\\\" as the only listed site. This indicates that, at the time of the query, \\\"MAIN\\\" was the only IoT site available to the system.\\n\\nThe implications of having a single IoT site available are significant for the operations and monitoring of industrial assets. It suggests that all IoT-related data and operations are currently centralized under this single site. This could influence how data is collected, processed, and analyzed, as well as how assets are managed and maintained.\\n\\nIn summary, the industrial asset operations system has one available IoT site, \\\"MAIN\\\", as retrieved from the \\\"iot\\\" server. This information is crucial for understanding the scope and configuration of IoT operations within the system.\\n\\n\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\nSources & Citations:\\n\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\n\\u2022 IoT Server Response - (100% match)\", \"runner_mode\": \"kp\", \"skills_runner_module\": \"servers.skills.runner\", \"skills_runner_file\": \"/Users/kmn/Documents/HPML/Project/AssetOpsBench/src/servers/skills/runner.py\", \"skills_markdown_runner_detected\": true, \"skills_markdown_json_plan_detected\": true, \"skills_catalog_md_count\": 14, \"skills_runtime_detection_error\": null, \"accuracy_mode\": \"llm-judge\", \"accuracy_judge_has_reference\": true, \"accuracy_judge_valid\": true, \"accuracy_judge_task_completion\": true, \"accuracy_judge_data_retrieval_accuracy\": true, \"accuracy_judge_generalized_result_verification\": true, \"accuracy_judge_agent_sequence_correct\": true, \"accuracy_judge_clarity_and_justification\": true, \"accuracy_judge_hallucinations\": false, \"accuracy_judge_strict_pass\": true, \"accuracy_judge_score\": 1.0, \"accuracy_judge_rationale\": \"The candidate answer accurately retrieves and presents the information about the available IoT site, 'MAIN', from the 'iot' server. It provides a clear explanation of the retrieval process and its implications, demonstrating a high level of clarity and justification. There are no unsupported claims or hallucinations in the response.\", \"accuracy_judge_model_id\": \"watsonx/ibm/granite-3-8b-instruct\", \"accuracy_judge_ms\": 2210.479, \"accuracy_judge_prompt_tokens\": 599, \"accuracy_judge_completion_tokens\": 135, \"accuracy_judge_total_tokens\": 734, \"accuracy_judge_error\": null, \"accuracy_judge_raw_output\": \"{\\n  \\\"task_completion\\\": true,\\n  \\\"data_retrieval_accuracy\\\": true,\\n  \\\"generalized_result_verification\\\": true,\\n  \\\"agent_sequence_correct\\\": true,\\n  \\\"clarity_and_justification\\\": true,\\n  \\\"hallucinations\\\": false,\\n  \\\"rationale\\\": \\\"The candidate answer accurately retrieves and presents the information about the available IoT site, 'MAIN', from the 'iot' server. It provides a clear explanation of the retrieval process and its implications, demonstrating a high level of clarity and justification. There are no unsupported claims or hallucinations in the response.\\\"\\n}\", \"accuracy_has_reference\": true, \"accuracy_score\": 1.0, \"accuracy_pass\": true, \"accuracy_threshold\": null, \"context_peak_prompt_tokens\": 5895, \"context_window_tokens\": null, \"context_window_utilization_pct\": null, \"context_estimated_kib\": 23.027, \"token_total_tokens\": 6852, \"token_prompt_tokens\": 6506, \"token_completion_tokens\": 346}\n{\"discover_ms\": 6979.647, \"plan_ms\": 712.911, \"execute_ms\": 1169.247, \"summarize_ms\": 2998.149, \"e2e_ms\": 15090.658, \"phase_ms\": {\"discover\": 6979.647, \"plan\": 712.911, \"execute\": 1169.247, \"summarize\": 2998.149}, \"success\": true, \"plan_steps\": 1, \"history_steps\": 1, \"tool_calls_attempted\": 1, \"tool_calls_succeeded\": 1, \"failed_steps\": 0, \"step_timings_ms\": [{\"step_number\": 1, \"server\": \"iot\", \"tool\": \"sites\", \"success\": true, \"error\": null, \"arg_resolution_ms\": 501.892, \"mcp_call_ms\": 314.212, \"step_execute_ms\": 816.105, \"arg_prompt_tokens\": 201, \"arg_completion_tokens\": 8}], \"token_usage\": {\"plan\": {\"prompt_tokens\": 5896, \"completion_tokens\": 43, \"total_tokens\": 5939}, \"summarize\": {\"prompt_tokens\": 408, \"completion_tokens\": 284, \"total_tokens\": 692}, \"execute_arg_resolution\": {\"prompt_tokens\": 201, \"completion_tokens\": 8, \"total_tokens\": 209}, \"llm_totals\": {\"prompt_tokens\": 6505, \"completion_tokens\": 335, \"total_tokens\": 6840}, \"llm_prompt_tokens_reported\": true, \"llm_completion_tokens_reported\": true}, \"question\": \"Can you list the IoT sites?\", \"model_id\": \"watsonx/meta-llama/llama-4-maverick-17b-128e-instruct-fp8\", \"scenario_id\": 2, \"scenario_type\": \"IoT\", \"git_sha\": \"d78793f\", \"error\": null, \"scenario_category\": \"Knowledge Query\", \"scenario_source\": \"hf\", \"synthetic\": false, \"synthetic_parent_id\": null, \"characteristic_form\": \"The expected response should be the return value of all sites, either as text or as a reference to a file\", \"candidate_answer\": \"The IoT sites available for the industrial asset operations system are listed as follows:\\n\\nThe task to list the IoT sites was executed in a single step, which involved querying the server designated as \\\"iot\\\" for the available sites. The response from the server indicated that there is currently one IoT site available.\\n\\nThe available IoT site is:\\n1. MAIN\\n\\nThis information suggests that the industrial asset operations system is currently configured to interact with or monitor assets or operations at the \\\"MAIN\\\" site. The \\\"MAIN\\\" site could potentially be a primary location for industrial operations, and the availability of this site in the IoT context implies that it is integrated into the IoT infrastructure for monitoring, data collection, or control purposes.\\n\\nTo obtain this information, the following step was taken:\\n- Step 1: List the available IoT sites by querying the \\\"iot\\\" server, which returned a list containing the \\\"MAIN\\\" site.\\n\\nThe result indicates a straightforward configuration with a single identified site. Further details about the \\\"MAIN\\\" site, such as its specific location, the type of assets or operations it encompasses, or the nature of the IoT integration, are not provided in the response. However, the identification of this site is a crucial first step in understanding the IoT landscape of the industrial asset operations system.\\n\\nSources & Citations:\\n\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\n\\u2022 IoT Server Response - (100% match)\", \"runner_mode\": \"kp\", \"skills_runner_module\": \"servers.skills.runner\", \"skills_runner_file\": \"/Users/kmn/Documents/HPML/Project/AssetOpsBench/src/servers/skills/runner.py\", \"skills_markdown_runner_detected\": true, \"skills_markdown_json_plan_detected\": true, \"skills_catalog_md_count\": 14, \"skills_runtime_detection_error\": null, \"accuracy_mode\": \"llm-judge\", \"accuracy_judge_has_reference\": true, \"accuracy_judge_valid\": true, \"accuracy_judge_task_completion\": true, \"accuracy_judge_data_retrieval_accuracy\": true, \"accuracy_judge_generalized_result_verification\": true, \"accuracy_judge_agent_sequence_correct\": true, \"accuracy_judge_clarity_and_justification\": true, \"accuracy_judge_hallucinations\": false, \"accuracy_judge_strict_pass\": true, \"accuracy_judge_score\": 1.0, \"accuracy_judge_rationale\": \"The candidate answer accurately lists the available IoT site, 'MAIN', and provides a clear explanation of how this information was retrieved. It does not include any unsupported claims.\", \"accuracy_judge_model_id\": \"watsonx/ibm/granite-3-8b-instruct\", \"accuracy_judge_ms\": 1817.124, \"accuracy_judge_prompt_tokens\": 587, \"accuracy_judge_completion_tokens\": 104, \"accuracy_judge_total_tokens\": 691, \"accuracy_judge_error\": null, \"accuracy_judge_raw_output\": \"{\\n  \\\"task_completion\\\": true,\\n  \\\"data_retrieval_accuracy\\\": true,\\n  \\\"generalized_result_verification\\\": true,\\n  \\\"agent_sequence_correct\\\": true,\\n  \\\"clarity_and_justification\\\": true,\\n  \\\"hallucinations\\\": false,\\n  \\\"rationale\\\": \\\"The candidate answer accurately lists the available IoT site, 'MAIN', and provides a clear explanation of how this information was retrieved. It does not include any unsupported claims.\\\"\\n}\", \"accuracy_has_reference\": true, \"accuracy_score\": 1.0, \"accuracy_pass\": true, \"accuracy_threshold\": null, \"context_peak_prompt_tokens\": 5896, \"context_window_tokens\": null, \"context_window_utilization_pct\": null, \"context_estimated_kib\": 23.031, \"token_total_tokens\": 6840, \"token_prompt_tokens\": 6505, \"token_completion_tokens\": 335}\n{\"discover_ms\": 7722.427, \"plan_ms\": 1322.594, \"execute_ms\": 1385.429, \"summarize_ms\": 8236.662, \"e2e_ms\": 21854.264, \"phase_ms\": {\"discover\": 7722.427, \"plan\": 1322.594, \"execute\": 1385.429, \"summarize\": 8236.662}, \"success\": true, \"plan_steps\": 1, \"history_steps\": 1, \"tool_calls_attempted\": 1, \"tool_calls_succeeded\": 1, \"failed_steps\": 0, \"step_timings_ms\": [{\"step_number\": 1, \"server\": \"iot\", \"tool\": \"assets\", \"success\": true, \"error\": null, \"arg_resolution_ms\": 588.217, \"mcp_call_ms\": 464.483, \"step_execute_ms\": 1052.701, \"arg_prompt_tokens\": 208, \"arg_completion_tokens\": 8}], \"token_usage\": {\"plan\": {\"prompt_tokens\": 5898, \"completion_tokens\": 100, \"total_tokens\": 5998}, \"summarize\": {\"prompt_tokens\": 462, \"completion_tokens\": 323, \"total_tokens\": 785}, \"execute_arg_resolution\": {\"prompt_tokens\": 208, \"completion_tokens\": 8, \"total_tokens\": 216}, \"llm_totals\": {\"prompt_tokens\": 6568, \"completion_tokens\": 431, \"total_tokens\": 6999}, \"llm_prompt_tokens_reported\": true, \"llm_completion_tokens_reported\": true}, \"question\": \"What assets can be found at the MAIN site?\", \"model_id\": \"watsonx/meta-llama/llama-4-maverick-17b-128e-instruct-fp8\", \"scenario_id\": 3, \"scenario_type\": \"IoT\", \"git_sha\": \"d78793f\", \"error\": null, \"scenario_category\": \"Knowledge Query\", \"scenario_source\": \"hf\", \"synthetic\": false, \"synthetic_parent_id\": null, \"characteristic_form\": \"The expected response should be the return value from querying the assets at the MAIN site. The response should be a reference to a file containing the list of assets\", \"candidate_answer\": \"The MAIN site contains two industrial assets, which are identified as \\\"Chiller 6\\\" and \\\"PUMP1\\\". To determine this, a query was executed on the IoT server to retrieve the list of assets associated with the MAIN site. The response from the server provided a total count of assets and their respective names.\\n\\nThe server response indicated that there are 2 assets at the MAIN site. The assets listed are \\\"Chiller 6\\\" and \\\"PUMP1\\\", which suggests that the MAIN site is equipped with at least one chiller unit and one pump. The presence of these assets implies that the site likely requires cooling and fluid transfer or circulation capabilities, which are common in various industrial settings.\\n\\nThe retrieval of this information was achieved through a straightforward query to the IoT server, which returned a JSON object containing the site name, total number of assets, a list of asset names, and a descriptive message confirming the number and names of the assets found.\\n\\nThe detailed results from the server are as follows: the site name is confirmed as \\\"MAIN\\\", with a total of 2 assets. The assets are specifically named as \\\"Chiller 6\\\" and \\\"PUMP1\\\". The server's response message explicitly states that 2 asset IDs were found for the site named MAIN, corresponding to \\\"Chiller 6\\\" and \\\"PUMP1\\\".\\n\\nThis information provides a clear and direct answer to the original question regarding the assets found at the MAIN site.\\n\\n\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\nSources & Citations:\\n\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\n\\u2022 IoT Server Response (iot server query results) - (100% match)\", \"runner_mode\": \"kp\", \"skills_runner_module\": \"servers.skills.runner\", \"skills_runner_file\": \"/Users/kmn/Documents/HPML/Project/AssetOpsBench/src/servers/skills/runner.py\", \"skills_markdown_runner_detected\": true, \"skills_markdown_json_plan_detected\": true, \"skills_catalog_md_count\": 14, \"skills_runtime_detection_error\": null, \"accuracy_mode\": \"llm-judge\", \"accuracy_judge_has_reference\": true, \"accuracy_judge_valid\": true, \"accuracy_judge_task_completion\": true, \"accuracy_judge_data_retrieval_accuracy\": true, \"accuracy_judge_generalized_result_verification\": true, \"accuracy_judge_agent_sequence_correct\": true, \"accuracy_judge_clarity_and_justification\": true, \"accuracy_judge_hallucinations\": false, \"accuracy_judge_strict_pass\": true, \"accuracy_judge_score\": 1.0, \"accuracy_judge_rationale\": \"The candidate answer accurately describes the assets found at the MAIN site, providing specific names and confirming the count through a query to the IoT server. The response is clear, well-justified, and does not contain any materially unsupported claims.\", \"accuracy_judge_model_id\": \"watsonx/ibm/granite-3-8b-instruct\", \"accuracy_judge_ms\": 1391.534, \"accuracy_judge_prompt_tokens\": 640, \"accuracy_judge_completion_tokens\": 121, \"accuracy_judge_total_tokens\": 761, \"accuracy_judge_error\": null, \"accuracy_judge_raw_output\": \"{\\n  \\\"task_completion\\\": true,\\n  \\\"data_retrieval_accuracy\\\": true,\\n  \\\"generalized_result_verification\\\": true,\\n  \\\"agent_sequence_correct\\\": true,\\n  \\\"clarity_and_justification\\\": true,\\n  \\\"hallucinations\\\": false,\\n  \\\"rationale\\\": \\\"The candidate answer accurately describes the assets found at the MAIN site, providing specific names and confirming the count through a query to the IoT server. The response is clear, well-justified, and does not contain any materially unsupported claims.\\\"\\n}\", \"accuracy_has_reference\": true, \"accuracy_score\": 1.0, \"accuracy_pass\": true, \"accuracy_threshold\": null, \"context_peak_prompt_tokens\": 5898, \"context_window_tokens\": null, \"context_window_utilization_pct\": null, \"context_estimated_kib\": 23.039, \"token_total_tokens\": 6999, \"token_prompt_tokens\": 6568, \"token_completion_tokens\": 431}\n{\"discover_ms\": 7060.666, \"plan_ms\": 1622.054, \"execute_ms\": 1111.455, \"summarize_ms\": 3386.479, \"e2e_ms\": 16333.858, \"phase_ms\": {\"discover\": 7060.666, \"plan\": 1622.054, \"execute\": 1111.455, \"summarize\": 3386.479}, \"success\": true, \"plan_steps\": 1, \"history_steps\": 1, \"tool_calls_attempted\": 1, \"tool_calls_succeeded\": 1, \"failed_steps\": 0, \"step_timings_ms\": [{\"step_number\": 1, \"server\": \"iot\", \"tool\": \"assets\", \"success\": true, \"error\": null, \"arg_resolution_ms\": 383.769, \"mcp_call_ms\": 412.708, \"step_execute_ms\": 796.478, \"arg_prompt_tokens\": 207, \"arg_completion_tokens\": 8}], \"token_usage\": {\"plan\": {\"prompt_tokens\": 5897, \"completion_tokens\": 96, \"total_tokens\": 5993}, \"summarize\": {\"prompt_tokens\": 461, \"completion_tokens\": 269, \"total_tokens\": 730}, \"execute_arg_resolution\": {\"prompt_tokens\": 207, \"completion_tokens\": 8, \"total_tokens\": 215}, \"llm_totals\": {\"prompt_tokens\": 6565, \"completion_tokens\": 373, \"total_tokens\": 6938}, \"llm_prompt_tokens_reported\": true, \"llm_completion_tokens_reported\": true}, \"question\": \"Which assets are located at the MAIN facility?\", \"model_id\": \"watsonx/meta-llama/llama-4-maverick-17b-128e-instruct-fp8\", \"scenario_id\": 4, \"scenario_type\": \"IoT\", \"git_sha\": \"d78793f\", \"error\": null, \"scenario_category\": \"Knowledge Query\", \"scenario_source\": \"hf\", \"synthetic\": false, \"synthetic_parent_id\": null, \"characteristic_form\": \"The expected response should be the return value from querying the assets at the MAIN site. The response should be a reference to a file containing the list of assets\", \"candidate_answer\": \"The assets located at the MAIN facility are Chiller 6 and PUMP1. To determine this, a query was executed to retrieve a list of assets associated with the MAIN facility from the IoT server. The response from the server indicated that there are a total of 2 assets at the MAIN facility.\\n\\nThe step-by-step process involved in obtaining this information included sending a request to the IoT server to retrieve the list of assets for the MAIN facility. The server processed this request and returned a response that included the site name, total number of assets, a list of asset names, and a message confirming the number of assets found.\\n\\nThe response from the IoT server provided the following details:\\n- The site name is confirmed to be \\\"MAIN\\\".\\n- The total number of assets at the MAIN facility is 2.\\n- The assets identified are \\\"Chiller 6\\\" and \\\"PUMP1\\\".\\n- The server's message confirmed that 2 asset IDs were found for the site name \\\"MAIN\\\", corresponding to \\\"Chiller 6\\\" and \\\"PUMP1\\\".\\n\\nTherefore, based on the information retrieved from the IoT server, the assets located at the MAIN facility are Chiller 6 and PUMP1.\\n\\n\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\nSources & Citations:\\n\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\n\\u2022 IoT Server Response - (100% match)\", \"runner_mode\": \"kp\", \"skills_runner_module\": \"servers.skills.runner\", \"skills_runner_file\": \"/Users/kmn/Documents/HPML/Project/AssetOpsBench/src/servers/skills/runner.py\", \"skills_markdown_runner_detected\": true, \"skills_markdown_json_plan_detected\": true, \"skills_catalog_md_count\": 14, \"skills_runtime_detection_error\": null, \"accuracy_mode\": \"llm-judge\", \"accuracy_judge_has_reference\": true, \"accuracy_judge_valid\": true, \"accuracy_judge_task_completion\": true, \"accuracy_judge_data_retrieval_accuracy\": true, \"accuracy_judge_generalized_result_verification\": true, \"accuracy_judge_agent_sequence_correct\": true, \"accuracy_judge_clarity_and_justification\": true, \"accuracy_judge_hallucinations\": false, \"accuracy_judge_strict_pass\": true, \"accuracy_judge_score\": 1.0, \"accuracy_judge_rationale\": \"The candidate answer accurately describes the process of retrieving the list of assets from the IoT server and provides the correct information about the assets located at the MAIN facility, namely Chiller 6 and PUMP1. The answer is well-justified and does not contain any unsupported claims.\", \"accuracy_judge_model_id\": \"watsonx/ibm/granite-3-8b-instruct\", \"accuracy_judge_ms\": 2430.349, \"accuracy_judge_prompt_tokens\": 582, \"accuracy_judge_completion_tokens\": 128, \"accuracy_judge_total_tokens\": 710, \"accuracy_judge_error\": null, \"accuracy_judge_raw_output\": \"{\\n  \\\"task_completion\\\": true,\\n  \\\"data_retrieval_accuracy\\\": true,\\n  \\\"generalized_result_verification\\\": true,\\n  \\\"agent_sequence_correct\\\": true,\\n  \\\"clarity_and_justification\\\": true,\\n  \\\"hallucinations\\\": false,\\n  \\\"rationale\\\": \\\"The candidate answer accurately describes the process of retrieving the list of assets from the IoT server and provides the correct information about the assets located at the MAIN facility, namely Chiller 6 and PUMP1. The answer is well-justified and does not contain any unsupported claims.\\\"\\n}\", \"accuracy_has_reference\": true, \"accuracy_score\": 1.0, \"accuracy_pass\": true, \"accuracy_threshold\": null, \"context_peak_prompt_tokens\": 5897, \"context_window_tokens\": null, \"context_window_utilization_pct\": null, \"context_estimated_kib\": 23.035, \"token_total_tokens\": 6938, \"token_prompt_tokens\": 6565, \"token_completion_tokens\": 373}\n{\"discover_ms\": 7069.724, \"plan_ms\": 5727.02, \"execute_ms\": 4328.622, \"summarize_ms\": 5065.17, \"e2e_ms\": 25354.881, \"phase_ms\": {\"discover\": 7069.724, \"plan\": 5727.02, \"execute\": 4328.622, \"summarize\": 5065.17}, \"success\": true, \"plan_steps\": 3, \"history_steps\": 3, \"tool_calls_attempted\": 3, \"tool_calls_succeeded\": 3, \"failed_steps\": 0, \"step_timings_ms\": [{\"step_number\": 1, \"server\": \"skills\", \"tool\": \"run_skill\", \"success\": true, \"error\": null, \"arg_resolution_ms\": 730.944, \"mcp_call_ms\": 1276.68, \"step_execute_ms\": 2007.624, \"arg_prompt_tokens\": 812, \"arg_completion_tokens\": 36}, {\"step_number\": 2, \"server\": \"iot\", \"tool\": \"assets\", \"success\": true, \"error\": null, \"arg_resolution_ms\": 471.387, \"mcp_call_ms\": 459.525, \"step_execute_ms\": 930.912, \"arg_prompt_tokens\": 665, \"arg_completion_tokens\": 8}, {\"step_number\": 3, \"server\": \"iot\", \"tool\": \"sensors\", \"success\": true, \"error\": null, \"arg_resolution_ms\": 460.768, \"mcp_call_ms\": 335.28, \"step_execute_ms\": 796.048, \"arg_prompt_tokens\": 737, \"arg_completion_tokens\": 18}], \"token_usage\": {\"plan\": {\"prompt_tokens\": 5901, \"completion_tokens\": 491, \"total_tokens\": 6392}, \"summarize\": {\"prompt_tokens\": 1243, \"completion_tokens\": 501, \"total_tokens\": 1744}, \"execute_arg_resolution\": {\"prompt_tokens\": 2214, \"completion_tokens\": 62, \"total_tokens\": 2276}, \"llm_totals\": {\"prompt_tokens\": 9358, \"completion_tokens\": 1054, \"total_tokens\": 10412}, \"llm_prompt_tokens_reported\": true, \"llm_completion_tokens_reported\": true}, \"question\": \"Retrieve metadata for Chiller 6 located at the MAIN site.\", \"model_id\": \"watsonx/meta-llama/llama-4-maverick-17b-128e-instruct-fp8\", \"scenario_id\": 5, \"scenario_type\": \"IoT\", \"git_sha\": \"d78793f\", \"error\": null, \"scenario_category\": \"Data Query\", \"scenario_source\": \"hf\", \"synthetic\": false, \"synthetic_parent_id\": null, \"characteristic_form\": \"The expected response should be the metadata for asset 'Chiller 6' at the MAIN site.  The metadata may be in the return value, or the may be returned as a reference to a file containing the metadata\", \"candidate_answer\": \"To retrieve metadata for Chiller 6 located at the MAIN site, a multi-step task execution was performed. The process involved verifying the existence of Chiller 6 at the MAIN site and gathering detailed information about its associated sensors.\\n\\nFirst, the `iot_sensor_inventory_for_asset` skill was executed with `asset_id='Chiller 6'` and `site_name='MAIN'`. This step confirmed that the MAIN site exists and that Chiller 6 is one of the two assets registered under it, the other being PUMP1. Furthermore, it was determined that Chiller 6 has 11 associated sensors.\\n\\nThe details of the sensors associated with Chiller 6 were then verified through two subsequent steps. The first of these steps listed assets at the MAIN site, confirming that Chiller 6 and PUMP1 are the assets present. The final step listed the sensors for Chiller 6, providing a comprehensive list of its associated sensors.\\n\\nThe metadata for Chiller 6 at the MAIN site includes the following sensors:\\n1. Chiller 6 Chiller % Loaded\\n2. Chiller 6 Chiller Efficiency\\n3. Chiller 6 Condenser Water Flow\\n4. Chiller 6 Condenser Water Return To Tower Temperature\\n5. Chiller 6 Liquid Refrigerant Evaporator Temperature\\n6. Chiller 6 Power Input\\n7. Chiller 6 Return Temperature\\n8. Chiller 6 Schedule\\n9. Chiller 6 Setpoint Temperature\\n10. Chiller 6 Supply Temperature\\n11. Chiller 6 Tonnage\\n\\nThese sensors provide a wide range of operational data for Chiller 6, including its performance metrics (e.g., Chiller % Loaded, Chiller Efficiency), operational parameters (e.g., Condenser Water Flow, Return Temperature), and configuration settings (e.g., Schedule, Setpoint Temperature).\\n\\nIn summary, Chiller 6 at the MAIN site is associated with 11 sensors that monitor various aspects of its operation. The successful retrieval of this metadata confirms that Chiller 6 is a registered asset at the MAIN site with comprehensive monitoring capabilities.\\n\\n\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\nSources & Citations:\\n\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\n\\u2022 Step 1 Execution Result - iot_sensor_inventory_for_asset skill output (100% match)\\n\\u2022 Step 2 Execution Result - List assets at MAIN site (100% match)\\n\\u2022 Step 3 Execution Result - List sensors for Chiller 6 at MAIN site (100% match)\", \"runner_mode\": \"kp\", \"skills_runner_module\": \"servers.skills.runner\", \"skills_runner_file\": \"/Users/kmn/Documents/HPML/Project/AssetOpsBench/src/servers/skills/runner.py\", \"skills_markdown_runner_detected\": true, \"skills_markdown_json_plan_detected\": true, \"skills_catalog_md_count\": 14, \"skills_runtime_detection_error\": null, \"accuracy_mode\": \"llm-judge\", \"accuracy_judge_has_reference\": true, \"accuracy_judge_valid\": true, \"accuracy_judge_task_completion\": true, \"accuracy_judge_data_retrieval_accuracy\": true, \"accuracy_judge_generalized_result_verification\": true, \"accuracy_judge_agent_sequence_correct\": true, \"accuracy_judge_clarity_and_justification\": true, \"accuracy_judge_hallucinations\": false, \"accuracy_judge_strict_pass\": true, \"accuracy_judge_score\": 1.0, \"accuracy_judge_rationale\": \"The candidate answer provides a detailed explanation of the process used to retrieve the metadata for Chiller 6 at the MAIN site. It confirms the existence of Chiller 6 and PUMP1 at the MAIN site, and lists the 11 sensors associated with Chiller 6. The answer is clear, well-justified, and does not contain any materially unsupported claims.\", \"accuracy_judge_model_id\": \"watsonx/ibm/granite-3-8b-instruct\", \"accuracy_judge_ms\": 4916.666, \"accuracy_judge_prompt_tokens\": 872, \"accuracy_judge_completion_tokens\": 150, \"accuracy_judge_total_tokens\": 1022, \"accuracy_judge_error\": null, \"accuracy_judge_raw_output\": \"{\\n  \\\"task_completion\\\": true,\\n  \\\"data_retrieval_accuracy\\\": true,\\n  \\\"generalized_result_verification\\\": true,\\n  \\\"agent_sequence_correct\\\": true,\\n  \\\"clarity_and_justification\\\": true,\\n  \\\"hallucinations\\\": false,\\n  \\\"rationale\\\": \\\"The candidate answer provides a detailed explanation of the process used to retrieve the metadata for Chiller 6 at the MAIN site. It confirms the existence of Chiller 6 and PUMP1 at the MAIN site, and lists the 11 sensors associated with Chiller 6. The answer is clear, well-justified, and does not contain any materially unsupported claims.\\\"\\n}\", \"accuracy_has_reference\": true, \"accuracy_score\": 1.0, \"accuracy_pass\": true, \"accuracy_threshold\": null, \"context_peak_prompt_tokens\": 5901, \"context_window_tokens\": null, \"context_window_utilization_pct\": null, \"context_estimated_kib\": 23.051, \"token_total_tokens\": 10412, \"token_prompt_tokens\": 9358, \"token_completion_tokens\": 1054}\n{\"discover_ms\": 6878.023, \"plan_ms\": 2436.245, \"execute_ms\": 2978.472, \"summarize_ms\": 5956.512, \"e2e_ms\": 21495.468, \"phase_ms\": {\"discover\": 6878.023, \"plan\": 2436.245, \"execute\": 2978.472, \"summarize\": 5956.512}, \"success\": true, \"plan_steps\": 4, \"history_steps\": 4, \"tool_calls_attempted\": 2, \"tool_calls_succeeded\": 2, \"failed_steps\": 0, \"step_timings_ms\": [{\"step_number\": 1, \"server\": \"iot\", \"tool\": \"assets\", \"success\": true, \"error\": null, \"arg_resolution_ms\": 940.396, \"mcp_call_ms\": 403.9, \"step_execute_ms\": 1344.296, \"arg_prompt_tokens\": 212, \"arg_completion_tokens\": 8}, {\"step_number\": 2, \"server\": \"none\", \"tool\": \"none\", \"success\": true, \"error\": null}, {\"step_number\": 3, \"server\": \"iot\", \"tool\": \"sensors\", \"success\": true, \"error\": null, \"arg_resolution_ms\": 937.111, \"mcp_call_ms\": 384.685, \"step_execute_ms\": 1321.796, \"arg_prompt_tokens\": 297, \"arg_completion_tokens\": 18}, {\"step_number\": 4, \"server\": \"none\", \"tool\": \"none\", \"success\": true, \"error\": null}], \"token_usage\": {\"plan\": {\"prompt_tokens\": 5902, \"completion_tokens\": 216, \"total_tokens\": 6118}, \"summarize\": {\"prompt_tokens\": 579, \"completion_tokens\": 577, \"total_tokens\": 1156}, \"execute_arg_resolution\": {\"prompt_tokens\": 509, \"completion_tokens\": 26, \"total_tokens\": 535}, \"llm_totals\": {\"prompt_tokens\": 6990, \"completion_tokens\": 819, \"total_tokens\": 7809}, \"llm_prompt_tokens_reported\": true, \"llm_completion_tokens_reported\": true}, \"question\": \"Get the asset details for Chiller 9 at the MAIN site.\", \"model_id\": \"watsonx/meta-llama/llama-4-maverick-17b-128e-instruct-fp8\", \"scenario_id\": 6, \"scenario_type\": \"IoT\", \"git_sha\": \"d78793f\", \"error\": null, \"scenario_category\": \"Data Query\", \"scenario_source\": \"hf\", \"synthetic\": false, \"synthetic_parent_id\": null, \"characteristic_form\": \"The expected response should be the details for asset 'Chiller 9' at the MAIN site.  The details may be in the return value, or the may be returned as a reference to a file containing the details\", \"candidate_answer\": \"To address the original question of retrieving the asset details for Chiller 9 at the MAIN site, a multi-step process was undertaken. Here's a detailed breakdown of the steps and findings:\\n\\n1. **Retrieval of Asset List for MAIN Site**: The first step involved retrieving the list of assets associated with the MAIN site from the IoT server. The response indicated that there are two assets registered under the MAIN site: \\\"Chiller 6\\\" and \\\"PUMP1\\\". Notably, \\\"Chiller 9\\\" was not listed among the assets for the MAIN site.\\n\\n2. **Identification of Asset ID for Chiller 9**: The next step was to identify the asset ID for Chiller 9. However, given that Chiller 9 was not found in the list of assets for the MAIN site, it suggests that either Chiller 9 is not an asset associated with the MAIN site or it is not correctly registered.\\n\\n3. **Retrieval of Sensor List for Chiller 9**: An attempt was made to retrieve the list of sensors for Chiller 9. The IoT server responded with an error message indicating that \\\"Chiller 9\\\" is an unknown asset ID or that no sensors were found for it. This outcome aligns with the initial finding that Chiller 9 is not recognized as an asset at the MAIN site.\\n\\n4. **Provision of Asset Details for Chiller 9**: The final step was to provide the asset details for Chiller 9, including its sensors. Given the preceding steps' outcomes, it's clear that providing detailed asset information for Chiller 9 is not feasible due to its absence from the MAIN site's asset list.\\n\\n**Comprehensive Explanation**:\\nThe asset details for Chiller 9 at the MAIN site could not be retrieved because Chiller 9 is not identified as an asset associated with the MAIN site. The initial query to the IoT server revealed that the MAIN site has two registered assets: \\\"Chiller 6\\\" and \\\"PUMP1\\\". The absence of Chiller 9 from this list suggests it is either not registered under the MAIN site or not correctly configured. Consequently, attempts to identify its asset ID and retrieve its sensor list were unsuccessful. The error message received during the sensor list retrieval further confirmed that Chiller 9 is not a recognized asset.\\n\\nIn conclusion, based on the information available and the steps executed, Chiller 9 does not appear to be a valid or registered asset at the MAIN site. Therefore, its asset details, including sensor information, cannot be provided.\\n\\n\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\nSources & Citations:\\n\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\n\\u2022 IoT Server Response for Asset List - Page 1 (100% match, as per Step 1 execution results)\\n\\u2022 IoT Server Error Response for Sensor List - Page 1 (100% match, as per Step 3 execution results)\", \"runner_mode\": \"kp\", \"skills_runner_module\": \"servers.skills.runner\", \"skills_runner_file\": \"/Users/kmn/Documents/HPML/Project/AssetOpsBench/src/servers/skills/runner.py\", \"skills_markdown_runner_detected\": true, \"skills_markdown_json_plan_detected\": true, \"skills_catalog_md_count\": 14, \"skills_runtime_detection_error\": null, \"accuracy_mode\": \"llm-judge\", \"accuracy_judge_has_reference\": true, \"accuracy_judge_valid\": true, \"accuracy_judge_task_completion\": false, \"accuracy_judge_data_retrieval_accuracy\": false, \"accuracy_judge_generalized_result_verification\": true, \"accuracy_judge_agent_sequence_correct\": true, \"accuracy_judge_clarity_and_justification\": true, \"accuracy_judge_hallucinations\": false, \"accuracy_judge_strict_pass\": false, \"accuracy_judge_score\": 0.666667, \"accuracy_judge_rationale\": \"The candidate answer accurately describes the process of attempting to retrieve the asset details for Chiller 9 at the MAIN site and concludes that Chiller 9 is not a registered asset at the MAIN site. However, it does not provide the expected asset details, hence data_retrieval_accuracy and task_completion are false.\", \"accuracy_judge_model_id\": \"watsonx/ibm/granite-3-8b-instruct\", \"accuracy_judge_ms\": 2662.551, \"accuracy_judge_prompt_tokens\": 927, \"accuracy_judge_completion_tokens\": 138, \"accuracy_judge_total_tokens\": 1065, \"accuracy_judge_error\": null, \"accuracy_judge_raw_output\": \"{\\n  \\\"task_completion\\\": false,\\n  \\\"data_retrieval_accuracy\\\": false,\\n  \\\"generalized_result_verification\\\": true,\\n  \\\"agent_sequence_correct\\\": true,\\n  \\\"clarity_and_justification\\\": true,\\n  \\\"hallucinations\\\": false,\\n  \\\"rationale\\\": \\\"The candidate answer accurately describes the process of attempting to retrieve the asset details for Chiller 9 at the MAIN site and concludes that Chiller 9 is not a registered asset at the MAIN site. However, it does not provide the expected asset details, hence data_retrieval_accuracy and task_completion are false.\\\"\\n}\", \"accuracy_has_reference\": true, \"accuracy_score\": 0.666667, \"accuracy_pass\": false, \"accuracy_threshold\": null, \"context_peak_prompt_tokens\": 5902, \"context_window_tokens\": null, \"context_window_utilization_pct\": null, \"context_estimated_kib\": 23.055, \"token_total_tokens\": 7809, \"token_prompt_tokens\": 6990, \"token_completion_tokens\": 819}\n{\"discover_ms\": 7147.123, \"plan_ms\": 7216.798, \"execute_ms\": 4363.295, \"summarize_ms\": 5926.867, \"e2e_ms\": 27896.755, \"phase_ms\": {\"discover\": 7147.123, \"plan\": 7216.798, \"execute\": 4363.295, \"summarize\": 5926.867}, \"success\": true, \"plan_steps\": 4, \"history_steps\": 4, \"tool_calls_attempted\": 3, \"tool_calls_succeeded\": 3, \"failed_steps\": 0, \"step_timings_ms\": [{\"step_number\": 1, \"server\": \"skills\", \"tool\": \"run_skill\", \"success\": true, \"error\": null, \"arg_resolution_ms\": 698.51, \"mcp_call_ms\": 1441.976, \"step_execute_ms\": 2140.487, \"arg_prompt_tokens\": 804, \"arg_completion_tokens\": 36}, {\"step_number\": 2, \"server\": \"iot\", \"tool\": \"assets\", \"success\": true, \"error\": null, \"arg_resolution_ms\": 403.131, \"mcp_call_ms\": 410.42, \"step_execute_ms\": 813.551, \"arg_prompt_tokens\": 416, \"arg_completion_tokens\": 8}, {\"step_number\": 3, \"server\": \"iot\", \"tool\": \"none\", \"success\": true, \"error\": null}, {\"step_number\": 4, \"server\": \"iot\", \"tool\": \"sensors\", \"success\": true, \"error\": null, \"arg_resolution_ms\": 405.799, \"mcp_call_ms\": 398.15, \"step_execute_ms\": 803.948, \"arg_prompt_tokens\": 499, \"arg_completion_tokens\": 18}], \"token_usage\": {\"plan\": {\"prompt_tokens\": 5901, \"completion_tokens\": 697, \"total_tokens\": 6598}, \"summarize\": {\"prompt_tokens\": 770, \"completion_tokens\": 592, \"total_tokens\": 1362}, \"execute_arg_resolution\": {\"prompt_tokens\": 1719, \"completion_tokens\": 62, \"total_tokens\": 1781}, \"llm_totals\": {\"prompt_tokens\": 8390, \"completion_tokens\": 1351, \"total_tokens\": 9741}, \"llm_prompt_tokens_reported\": true, \"llm_completion_tokens_reported\": true}, \"question\": \"Download the metadata for Chiller 3 at the MAIN facility.\", \"model_id\": \"watsonx/meta-llama/llama-4-maverick-17b-128e-instruct-fp8\", \"scenario_id\": 7, \"scenario_type\": \"IoT\", \"git_sha\": \"d78793f\", \"error\": null, \"scenario_category\": \"Data Query\", \"scenario_source\": \"hf\", \"synthetic\": false, \"synthetic_parent_id\": null, \"characteristic_form\": \"The expected response should be the metadata for asset 'Chiller 3' as the MAIN site.  The metadata may be in the return value, or the may be returned as a reference to a file containing the metadata\", \"candidate_answer\": \"The task was to download the metadata for Chiller 3 at the MAIN facility. To accomplish this, a multi-step process was executed.\\n\\nFirst, the skill to retrieve the sensor inventory for Chiller 3 at MAIN was run on the \\\"skills\\\" server. The results indicated that while the site \\\"MAIN\\\" was successfully identified, and its assets were listed, there was an issue in retrieving the sensors for \\\"Chiller 3\\\". Specifically, the steps involved in this skill execution were: listing sites, listing site assets, and listing asset sensors. The \\\"list_sites\\\" step was successful and confirmed that \\\"MAIN\\\" is among the listed sites. The \\\"list_site_assets\\\" step was also successful, but it revealed that the assets associated with the MAIN site are \\\"Chiller 6\\\" and \\\"PUMP1\\\", not \\\"Chiller 3\\\". The \\\"list_asset_sensors\\\" step failed with an error indicating that \\\"Chiller 3\\\" is an unknown asset or has no sensors found.\\n\\nTo verify the existence and details of \\\"Chiller 3\\\", further steps were taken. The second step involved verifying that \\\"MAIN\\\" is among the listed sites and retrieving its assets directly from the \\\"iot\\\" server. This step confirmed that \\\"MAIN\\\" is a valid site and listed its assets as \\\"Chiller 6\\\" and \\\"PUMP1\\\", consistent with the results from the \\\"skills\\\" server.\\n\\nThe third step was to check if \\\"Chiller 3\\\" is among the assets listed for the MAIN site. Contrary to the initial results, it was confirmed that \\\"Chiller 3\\\" exists.\\n\\nThe fourth and final step was to retrieve the sensors or metadata associated with \\\"Chiller 3\\\" from the \\\"iot\\\" server. However, this step resulted in an error message stating that \\\"Chiller 3\\\" is an unknown asset or has no sensors found.\\n\\nGiven these results, it appears there is a discrepancy between the confirmation of \\\"Chiller 3\\\" existence and the inability to retrieve its metadata or sensors. The initial skill execution and the direct query to the \\\"iot\\\" server both failed to retrieve metadata for \\\"Chiller 3\\\", suggesting that either \\\"Chiller 3\\\" does not have associated metadata or sensors, or there is an inconsistency in how \\\"Chiller 3\\\" is identified or accessed across different systems or servers.\\n\\nIn conclusion, despite confirming the existence of \\\"Chiller 3\\\", the task to download its metadata at the MAIN facility was not successful due to errors indicating that \\\"Chiller 3\\\" is unknown or has no sensors.\\n\\n\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\nSources & Citations:\\n\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\n\\u2022 Step 1 Execution Results - skills server (100% relevant)\\n\\u2022 Step 2 Execution Results - iot server (100% relevant)\\n\\u2022 Step 3 Execution Results - iot server (100% relevant)\\n\\u2022 Step 4 Execution Results - iot server (100% relevant)\", \"runner_mode\": \"kp\", \"skills_runner_module\": \"servers.skills.runner\", \"skills_runner_file\": \"/Users/kmn/Documents/HPML/Project/AssetOpsBench/src/servers/skills/runner.py\", \"skills_markdown_runner_detected\": true, \"skills_markdown_json_plan_detected\": true, \"skills_catalog_md_count\": 14, \"skills_runtime_detection_error\": null, \"accuracy_mode\": \"llm-judge\", \"accuracy_judge_has_reference\": true, \"accuracy_judge_valid\": true, \"accuracy_judge_task_completion\": false, \"accuracy_judge_data_retrieval_accuracy\": false, \"accuracy_judge_generalized_result_verification\": true, \"accuracy_judge_agent_sequence_correct\": true, \"accuracy_judge_clarity_and_justification\": true, \"accuracy_judge_hallucinations\": false, \"accuracy_judge_strict_pass\": false, \"accuracy_judge_score\": 0.666667, \"accuracy_judge_rationale\": \"The candidate answer accurately describes the process of attempting to retrieve metadata for Chiller 3 at the MAIN facility, but ultimately fails to provide the requested metadata. The answer is clear, well-justified, and does not contain any hallucinations.\", \"accuracy_judge_model_id\": \"watsonx/ibm/granite-3-8b-instruct\", \"accuracy_judge_ms\": 2694.744, \"accuracy_judge_prompt_tokens\": 950, \"accuracy_judge_completion_tokens\": 121, \"accuracy_judge_total_tokens\": 1071, \"accuracy_judge_error\": null, \"accuracy_judge_raw_output\": \"{\\n  \\\"task_completion\\\": false,\\n  \\\"data_retrieval_accuracy\\\": false,\\n  \\\"generalized_result_verification\\\": true,\\n  \\\"agent_sequence_correct\\\": true,\\n  \\\"clarity_and_justification\\\": true,\\n  \\\"hallucinations\\\": false,\\n  \\\"rationale\\\": \\\"The candidate answer accurately describes the process of attempting to retrieve metadata for Chiller 3 at the MAIN facility, but ultimately fails to provide the requested metadata. The answer is clear, well-justified, and does not contain any hallucinations.\\\"\\n}\", \"accuracy_has_reference\": true, \"accuracy_score\": 0.666667, \"accuracy_pass\": false, \"accuracy_threshold\": null, \"context_peak_prompt_tokens\": 5901, \"context_window_tokens\": null, \"context_window_utilization_pct\": null, \"context_estimated_kib\": 23.051, \"token_total_tokens\": 9741, \"token_prompt_tokens\": 8390, \"token_completion_tokens\": 1351}\n{\"discover_ms\": 6846.019, \"plan_ms\": 6406.154, \"execute_ms\": 3646.676, \"summarize_ms\": 4993.656, \"e2e_ms\": 25067.145, \"phase_ms\": {\"discover\": 6846.019, \"plan\": 6406.154, \"execute\": 3646.676, \"summarize\": 4993.656}, \"success\": true, \"plan_steps\": 3, \"history_steps\": 3, \"tool_calls_attempted\": 3, \"tool_calls_succeeded\": 3, \"failed_steps\": 0, \"step_timings_ms\": [{\"step_number\": 1, \"server\": \"iot\", \"tool\": \"assets\", \"success\": true, \"error\": null, \"arg_resolution_ms\": 1140.587, \"mcp_call_ms\": 408.242, \"step_execute_ms\": 1548.828, \"arg_prompt_tokens\": 231, \"arg_completion_tokens\": 8}, {\"step_number\": 2, \"server\": \"iot\", \"tool\": \"sensors\", \"success\": true, \"error\": null, \"arg_resolution_ms\": 403.011, \"mcp_call_ms\": 320.287, \"step_execute_ms\": 723.298, \"arg_prompt_tokens\": 303, \"arg_completion_tokens\": 18}, {\"step_number\": 3, \"server\": \"iot\", \"tool\": \"history\", \"success\": true, \"error\": null, \"arg_resolution_ms\": 707.948, \"mcp_call_ms\": 353.485, \"step_execute_ms\": 1061.433, \"arg_prompt_tokens\": 587, \"arg_completion_tokens\": 43}], \"token_usage\": {\"plan\": {\"prompt_tokens\": 5913, \"completion_tokens\": 581, \"total_tokens\": 6494}, \"summarize\": {\"prompt_tokens\": 917, \"completion_tokens\": 498, \"total_tokens\": 1415}, \"execute_arg_resolution\": {\"prompt_tokens\": 1121, \"completion_tokens\": 69, \"total_tokens\": 1190}, \"llm_totals\": {\"prompt_tokens\": 7951, \"completion_tokens\": 1148, \"total_tokens\": 9099}, \"llm_prompt_tokens_reported\": true, \"llm_completion_tokens_reported\": true}, \"question\": \"Download sensor data for Chiller 6's Tonnage from the last week of 2020 at the MAIN site\", \"model_id\": \"watsonx/meta-llama/llama-4-maverick-17b-128e-instruct-fp8\", \"scenario_id\": 8, \"scenario_type\": \"IoT\", \"git_sha\": \"d78793f\", \"error\": null, \"scenario_category\": \"Data Query\", \"scenario_source\": \"hf\", \"synthetic\": false, \"synthetic_parent_id\": null, \"characteristic_form\": \"The expected response should be the tonnage data for last week of 2020 for 'Chiller 6' at the MAIN site. The response should be a reference to a file containing the list of tonnage values\", \"candidate_answer\": \"To address the original question of downloading sensor data for Chiller 6's Tonnage from the last week of 2020 at the MAIN site, a multi-step task execution was performed. Here's a detailed breakdown of the process and findings:\\n\\n1. **Verification of Asset Existence**: The first step involved retrieving the list of assets for the MAIN site to confirm the existence of Chiller 6. The response from the server indicated that there are two assets at the MAIN site: \\\"Chiller 6\\\" and \\\"PUMP1\\\". This confirmed that Chiller 6 is indeed an asset at the MAIN site.\\n\\n2. **Verification of Sensor Existence**: The next step was to list the sensors available for Chiller 6 at the MAIN site to verify the existence of the \\\"Tonnage\\\" sensor. The server response listed 11 sensors associated with Chiller 6, including \\\"Chiller 6 Tonnage\\\". This confirmed that the Tonnage sensor is available for Chiller 6.\\n\\n3. **Retrieval of Historical Data**: The final step involved retrieving the historical data for Chiller 6's Tonnage sensor for the last week of 2020 (2020-12-24 to 2020-12-31). The server response indicated that there were 0 observations for the specified period, meaning no data was recorded or available for Chiller 6 Tonnage during that time.\\n\\nIn summary, while Chiller 6 exists at the MAIN site and has a Tonnage sensor associated with it, there is no sensor data available for the last week of 2020. The absence of data could be due to various reasons such as sensor malfunction, data logging issues, or simply that the chiller was not operational during that period.\\n\\nTo download the sensor data as originally requested, one would typically follow these steps:\\n- Confirm the asset and sensor exist, which was done in steps 1 and 2.\\n- Specify the correct date range for the data required.\\n- Use the appropriate API or data retrieval method to fetch the data.\\n\\nHowever, in this case, despite confirming the existence of Chiller 6 and its Tonnage sensor, no data was available for the specified period.\\n\\n\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\nSources & Citations:\\n\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\n\\u2022 Step 1 Execution Result - (100% relevant)\\n\\u2022 Step 2 Execution Result - (100% relevant)\\n\\u2022 Step 3 Execution Result - (100% relevant)\", \"runner_mode\": \"kp\", \"skills_runner_module\": \"servers.skills.runner\", \"skills_runner_file\": \"/Users/kmn/Documents/HPML/Project/AssetOpsBench/src/servers/skills/runner.py\", \"skills_markdown_runner_detected\": true, \"skills_markdown_json_plan_detected\": true, \"skills_catalog_md_count\": 14, \"skills_runtime_detection_error\": null, \"accuracy_mode\": \"llm-judge\", \"accuracy_judge_has_reference\": true, \"accuracy_judge_valid\": true, \"accuracy_judge_task_completion\": false, \"accuracy_judge_data_retrieval_accuracy\": false, \"accuracy_judge_generalized_result_verification\": true, \"accuracy_judge_agent_sequence_correct\": true, \"accuracy_judge_clarity_and_justification\": true, \"accuracy_judge_hallucinations\": false, \"accuracy_judge_strict_pass\": false, \"accuracy_judge_score\": 0.666667, \"accuracy_judge_rationale\": \"The candidate answer correctly follows the steps to verify the existence of Chiller 6 and its Tonnage sensor, and accurately reports that no data is available for the specified period. However, it does not provide the actual data as requested in the question, hence 'task_completion' and 'data_retrieval_accuracy' are set to false.\", \"accuracy_judge_model_id\": \"watsonx/ibm/granite-3-8b-instruct\", \"accuracy_judge_ms\": 1478.192, \"accuracy_judge_prompt_tokens\": 889, \"accuracy_judge_completion_tokens\": 143, \"accuracy_judge_total_tokens\": 1032, \"accuracy_judge_error\": null, \"accuracy_judge_raw_output\": \"{\\n  \\\"task_completion\\\": false,\\n  \\\"data_retrieval_accuracy\\\": false,\\n  \\\"generalized_result_verification\\\": true,\\n  \\\"agent_sequence_correct\\\": true,\\n  \\\"clarity_and_justification\\\": true,\\n  \\\"hallucinations\\\": false,\\n  \\\"rationale\\\": \\\"The candidate answer correctly follows the steps to verify the existence of Chiller 6 and its Tonnage sensor, and accurately reports that no data is available for the specified period. However, it does not provide the actual data as requested in the question, hence 'task_completion' and 'data_retrieval_accuracy' are set to false.\\\"\\n}\", \"accuracy_has_reference\": true, \"accuracy_score\": 0.666667, \"accuracy_pass\": false, \"accuracy_threshold\": null, \"context_peak_prompt_tokens\": 5913, \"context_window_tokens\": null, \"context_window_utilization_pct\": null, \"context_estimated_kib\": 23.098, \"token_total_tokens\": 9099, \"token_prompt_tokens\": 7951, \"token_completion_tokens\": 1148}\n{\"discover_ms\": 0.0, \"plan_ms\": 0.0, \"execute_ms\": 0.0, \"summarize_ms\": 0.0, \"e2e_ms\": 0.0, \"phase_ms\": {\"discover\": 0.0, \"plan\": 0.0, \"execute\": 0.0, \"summarize\": 0.0}, \"success\": false, \"plan_steps\": 0, \"history_steps\": 0, \"tool_calls_attempted\": 0, \"tool_calls_succeeded\": 0, \"failed_steps\": 0, \"step_timings_ms\": [], \"token_usage\": {\"plan\": {\"prompt_tokens\": null, \"completion_tokens\": null, \"total_tokens\": null}, \"summarize\": {\"prompt_tokens\": null, \"completion_tokens\": null, \"total_tokens\": null}, \"execute_arg_resolution\": {\"prompt_tokens\": null, \"completion_tokens\": null, \"total_tokens\": null}, \"llm_totals\": {\"prompt_tokens\": null, \"completion_tokens\": null, \"total_tokens\": null}, \"llm_prompt_tokens_reported\": false, \"llm_completion_tokens_reported\": false}, \"question\": \"Retrieve sensor data for Chiller 6's % Loaded from June 2020 at MAIN.\", \"model_id\": \"watsonx/meta-llama/llama-4-maverick-17b-128e-instruct-fp8\", \"scenario_id\": 9, \"scenario_type\": \"IoT\", \"git_sha\": \"d78793f\", \"error\": \"harness_error: litellm.BadRequestError: WatsonxException - {\\\"errors\\\":[{\\\"code\\\":\\\"invalid_input_argument\\\",\\\"message\\\":\\\"Invalid input argument for Model 'meta-llama/llama-4-maverick-17b-128e-instruct-fp8': This model's maximum context length is 131072 tokens. However, you requested 282345 tokens (280297 in the messages, 2048 in the completion). Please reduce the length of the messages or completion.\\\",\\\"more_info\\\":\\\"https://cloud.ibm.com/apidocs/watsonx-ai#text-chat\\\"}],\\\"trace\\\":\\\"fd09e9602894491c326d185ed40bdcff\\\",\\\"status_code\\\":400}\", \"scenario_category\": \"Data Query\", \"scenario_source\": \"hf\", \"synthetic\": false, \"synthetic_parent_id\": null, \"characteristic_form\": \"The expected response should be the % Loaded measurements for the asset 'Chiller 6' at the MAIN site. It should include all recorded values for June 1, 2020 througb June 30, 2020 inclusive. The response should be a reference to a file containing the % Loaded data\", \"candidate_answer\": null, \"runner_mode\": \"kp\", \"skills_runner_module\": \"servers.skills.runner\", \"skills_runner_file\": \"/Users/kmn/Documents/HPML/Project/AssetOpsBench/src/servers/skills/runner.py\", \"skills_markdown_runner_detected\": true, \"skills_markdown_json_plan_detected\": true, \"skills_catalog_md_count\": 14, \"skills_runtime_detection_error\": null, \"accuracy_mode\": \"llm-judge\", \"accuracy_judge_has_reference\": true, \"accuracy_judge_valid\": true, \"accuracy_judge_task_completion\": false, \"accuracy_judge_data_retrieval_accuracy\": false, \"accuracy_judge_generalized_result_verification\": false, \"accuracy_judge_agent_sequence_correct\": false, \"accuracy_judge_clarity_and_justification\": false, \"accuracy_judge_hallucinations\": true, \"accuracy_judge_strict_pass\": false, \"accuracy_judge_score\": 0.0, \"accuracy_judge_rationale\": \"The candidate answer does not provide any data or reference to data, hence it fails task completion, data retrieval accuracy, generalized result verification, and agent sequence correctness. It also lacks clarity and justification, and contains hallucinations as it does not provide any factual information.\", \"accuracy_judge_model_id\": \"watsonx/ibm/granite-3-8b-instruct\", \"accuracy_judge_ms\": 3688.142, \"accuracy_judge_prompt_tokens\": 349, \"accuracy_judge_completion_tokens\": 129, \"accuracy_judge_total_tokens\": 478, \"accuracy_judge_error\": null, \"accuracy_judge_raw_output\": \"{\\n  \\\"task_completion\\\": false,\\n  \\\"data_retrieval_accuracy\\\": false,\\n  \\\"generalized_result_verification\\\": false,\\n  \\\"agent_sequence_correct\\\": false,\\n  \\\"clarity_and_justification\\\": false,\\n  \\\"hallucinations\\\": true,\\n  \\\"rationale\\\": \\\"The candidate answer does not provide any data or reference to data, hence it fails task completion, data retrieval accuracy, generalized result verification, and agent sequence correctness. It also lacks clarity and justification, and contains hallucinations as it does not provide any factual information.\\\"\\n}\", \"accuracy_has_reference\": true, \"accuracy_score\": 0.0, \"accuracy_pass\": false, \"accuracy_threshold\": null, \"context_peak_prompt_tokens\": null, \"context_window_tokens\": null, \"context_window_utilization_pct\": null, \"context_estimated_kib\": null, \"token_total_tokens\": null, \"token_prompt_tokens\": null, \"token_completion_tokens\": null}\n{\"discover_ms\": 0.0, \"plan_ms\": 0.0, \"execute_ms\": 0.0, \"summarize_ms\": 0.0, \"e2e_ms\": 0.0, \"phase_ms\": {\"discover\": 0.0, \"plan\": 0.0, \"execute\": 0.0, \"summarize\": 0.0}, \"success\": false, \"plan_steps\": 0, \"history_steps\": 0, \"tool_calls_attempted\": 0, \"tool_calls_succeeded\": 0, \"failed_steps\": 0, \"step_timings_ms\": [], \"token_usage\": {\"plan\": {\"prompt_tokens\": null, \"completion_tokens\": null, \"total_tokens\": null}, \"summarize\": {\"prompt_tokens\": null, \"completion_tokens\": null, \"total_tokens\": null}, \"execute_arg_resolution\": {\"prompt_tokens\": null, \"completion_tokens\": null, \"total_tokens\": null}, \"llm_totals\": {\"prompt_tokens\": null, \"completion_tokens\": null, \"total_tokens\": null}, \"llm_prompt_tokens_reported\": false, \"llm_completion_tokens_reported\": false}, \"question\": \"Get sensor data for both Chiller 6 and Chiller 9's Tonnage from first week of June 2020 at MAIN in a single file.\", \"model_id\": \"watsonx/meta-llama/llama-4-maverick-17b-128e-instruct-fp8\", \"scenario_id\": 10, \"scenario_type\": \"IoT\", \"git_sha\": \"d78793f\", \"error\": \"harness_error: litellm.BadRequestError: WatsonxException - {\\\"errors\\\":[{\\\"code\\\":\\\"invalid_input_argument\\\",\\\"message\\\":\\\"Invalid input argument for Model 'meta-llama/llama-4-maverick-17b-128e-instruct-fp8': This model's maximum context length is 131072 tokens. However, you requested 166192 tokens (164144 in the messages, 2048 in the completion). Please reduce the length of the messages or completion.\\\",\\\"more_info\\\":\\\"https://cloud.ibm.com/apidocs/watsonx-ai#text-chat\\\"}],\\\"trace\\\":\\\"3291a1be4d222eafddd88f6b95419fb8\\\",\\\"status_code\\\":400}\", \"scenario_category\": \"Data Query\", \"scenario_source\": \"hf\", \"synthetic\": false, \"synthetic_parent_id\": null, \"characteristic_form\": \"The expected response should be the Tonnage values for both asset 'Chiller 6' and asset 'Chiller 9' at the MAIN site for last week. The values from both chillers should be merged into a single file. The return value should reference the file containing the merged Tonnage data from both chillers\", \"candidate_answer\": null, \"runner_mode\": \"kp\", \"skills_runner_module\": \"servers.skills.runner\", \"skills_runner_file\": \"/Users/kmn/Documents/HPML/Project/AssetOpsBench/src/servers/skills/runner.py\", \"skills_markdown_runner_detected\": true, \"skills_markdown_json_plan_detected\": true, \"skills_catalog_md_count\": 14, \"skills_runtime_detection_error\": null, \"accuracy_mode\": \"llm-judge\", \"accuracy_judge_has_reference\": true, \"accuracy_judge_valid\": true, \"accuracy_judge_task_completion\": true, \"accuracy_judge_data_retrieval_accuracy\": false, \"accuracy_judge_generalized_result_verification\": false, \"accuracy_judge_agent_sequence_correct\": false, \"accuracy_judge_clarity_and_justification\": false, \"accuracy_judge_hallucinations\": true, \"accuracy_judge_strict_pass\": false, \"accuracy_judge_score\": 0.166667, \"accuracy_judge_rationale\": \"The candidate answer does not provide the actual Tonnage data for Chiller 6 and Chiller 9 at MAIN for the first week of June 2020, nor does it mention a single file containing the merged data. It only describes the expected response, which is not the actual data retrieval.\", \"accuracy_judge_model_id\": \"watsonx/ibm/granite-3-8b-instruct\", \"accuracy_judge_ms\": 2942.179, \"accuracy_judge_prompt_tokens\": 366, \"accuracy_judge_completion_tokens\": 134, \"accuracy_judge_total_tokens\": 500, \"accuracy_judge_error\": null, \"accuracy_judge_raw_output\": \"{\\n  \\\"task_completion\\\": true,\\n  \\\"data_retrieval_accuracy\\\": false,\\n  \\\"generalized_result_verification\\\": false,\\n  \\\"agent_sequence_correct\\\": false,\\n  \\\"clarity_and_justification\\\": false,\\n  \\\"hallucinations\\\": true,\\n  \\\"rationale\\\": \\\"The candidate answer does not provide the actual Tonnage data for Chiller 6 and Chiller 9 at MAIN for the first week of June 2020, nor does it mention a single file containing the merged data. It only describes the expected response, which is not the actual data retrieval.\\\"\\n}\", \"accuracy_has_reference\": true, \"accuracy_score\": 0.166667, \"accuracy_pass\": false, \"accuracy_threshold\": null, \"context_peak_prompt_tokens\": null, \"context_window_tokens\": null, \"context_window_utilization_pct\": null, \"context_estimated_kib\": null, \"token_total_tokens\": null, \"token_prompt_tokens\": null, \"token_completion_tokens\": null}\n";
+
+
+    const rows = jsonlData.trim().split("\n").map(line => JSON.parse(line));
+
+    const data = rows.map(r => {
+        const planSteps = r.plan_steps || 0;
+        const toolCalls = r.tool_calls_attempted || 0;
+        const totalTokens = r.token_total_tokens || 0;
+        return {
+            ...r,
+            id: r.scenario_id,
+            category: r.scenario_category || "Unknown",
+            ms_per_step: planSteps > 0 ? r.e2e_ms / planSteps : null,
+            tokens_per_step: planSteps > 0 ? totalTokens / planSteps : null,
+            ms_per_tool_call: toolCalls > 0 ? r.e2e_ms / toolCalls : null,
+            accuracy_per_1k_tokens: totalTokens > 0 ? r.accuracy_score / (totalTokens / 1000) : null,
+            token_plan_total: r.token_usage?.plan?.total_tokens ?? null,
+            token_exec_total: r.token_usage?.execute_arg_resolution?.total_tokens ?? null,
+            token_sum_total: r.token_usage?.summarize?.total_tokens ?? null
+        };
+    });
+
+    const axisTitles = {
+        e2e_ms: "Latency (ms)",
+        token_total_tokens: "Total Tokens",
+        plan_steps: "Steps Taken",
+        accuracy_score: "Accuracy Score",
+        tool_calls_attempted: "Tool Calls Attempted",
+        ms_per_step: "ms per Step",
+        tokens_per_step: "Tokens per Step",
+        accuracy_per_1k_tokens: "Accuracy per 1k Tokens"
+    };
+
+    const plotConfig = { responsive: true, displaylogo: false };
+
+    function mean(values) {
+        const valid = values.filter(v => Number.isFinite(v));
+        if (!valid.length) {
+            return null;
+        }
+        return valid.reduce((a, b) => a + b, 0) / valid.length;
+    }
+
+    function pct(numer, denom) {
+        if (!Number.isFinite(denom) || denom <= 0) {
+            return null;
+        }
+        return (numer / denom) * 100;
+    }
+
+    function fmt(value, digits = 2) {
+        if (!Number.isFinite(value)) {
+            return "n/a";
+        }
+        return value.toLocaleString(undefined, {
+            maximumFractionDigits: digits,
+            minimumFractionDigits: digits
+        });
+    }
+
+    function fmtPct(value, digits = 1) {
+        if (!Number.isFinite(value)) {
+            return "n/a";
+        }
+        return `${value.toFixed(digits)}%`;
+    }
+
+    function escapeHtml(value) {
+        return String(value)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/\"/g, "&quot;")
+            .replace(/'/g, "&#39;");
+    }
+
+    function judgeBit(value) {
+        if (value === true) {
+            return 1;
+        }
+        if (value === false) {
+            return 0;
+        }
+        return null;
+    }
+
+    function uniqValues(dataset, field) {
+        return [...new Set(dataset.map(d => d[field]).filter(v => v !== null && v !== undefined && v !== ""))];
+    }
+
+    function categories(dataset = data) {
+        return [...new Set(dataset.map(d => d.category))];
+    }
+
+    function byCategory(dataset, field) {
+        const cats = categories(dataset);
+        return cats.map(cat => dataset.filter(d => d.category === cat).map(d => d[field]).filter(v => Number.isFinite(v)));
+    }
+
+    function populateFilters() {
+        const categorySelect = document.getElementById("category-filter");
+        const scenarioSelect = document.getElementById("scenario-filter");
+
+        categories().sort((a, b) => a.localeCompare(b)).forEach(cat => {
+            const option = document.createElement("option");
+            option.value = cat;
+            option.textContent = cat;
+            categorySelect.appendChild(option);
+        });
+
+        data
+            .slice()
+            .sort((a, b) => a.id - b.id)
+            .forEach(row => {
+                const option = document.createElement("option");
+                option.value = String(row.id);
+                option.textContent = `${row.id} - ${row.category}`;
+                scenarioSelect.appendChild(option);
+            });
+    }
+
+    function getFilteredData() {
+        const selectedCategory = document.getElementById("category-filter").value;
+        const selectedScenarioIds = [...document.getElementById("scenario-filter").selectedOptions]
+            .map(opt => Number(opt.value));
+
+        let filtered = data;
+        if (selectedCategory !== "__all__") {
+            filtered = filtered.filter(d => d.category === selectedCategory);
+        }
+        if (selectedScenarioIds.length > 0) {
+            filtered = filtered.filter(d => selectedScenarioIds.includes(d.id));
+        }
+        return filtered;
+    }
+
+    function renderCards(dataset) {
+        const count = dataset.length;
+        const successCount = dataset.filter(d => d.success).length;
+        const accPassCount = dataset.filter(d => d.accuracy_pass).length;
+        const successRate = pct(successCount, count);
+        const accPassRate = pct(accPassCount, count);
+        const meanE2e = mean(dataset.map(d => d.e2e_ms));
+        const meanAccuracy = mean(dataset.map(d => d.accuracy_score));
+        const meanContextUtil = mean(dataset.map(d => d.context_window_utilization_pct));
+
+        document.getElementById("m-count").textContent = String(count);
+        document.getElementById("m-success-rate").textContent = fmtPct(successRate);
+        document.getElementById("m-mean-e2e").textContent = fmt(meanE2e, 0);
+        document.getElementById("m-mean-acc").textContent = fmt(meanAccuracy, 3);
+        document.getElementById("m-acc-pass-rate").textContent = fmtPct(accPassRate);
+        document.getElementById("m-context-util").textContent = fmtPct(meanContextUtil);
+    }
+
+    function renderRunConfig(dataset) {
+        const sourceVals = uniqValues(dataset, "scenario_source");
+        const modelVals = uniqValues(dataset, "model_id");
+        const accuracyModeVals = uniqValues(dataset, "accuracy_mode");
+        const thresholdVals = uniqValues(dataset, "accuracy_threshold");
+
+        const show = (arr, fallback = "n/a") => arr.length ? arr.join(", ") : fallback;
+        const thresholdText = thresholdVals.length
+            ? thresholdVals.map(v => Number.isFinite(v) ? Number(v).toFixed(2) : String(v)).join(", ")
+            : "n/a";
+
+        const chips = [
+            `source=${show(sourceVals)}`,
+            `model_id=${show(modelVals)}`,
+            `accuracy_mode=${show(accuracyModeVals)}`,
+            `accuracy_threshold=${thresholdText}`
+        ];
+
+        document.getElementById("run-config-items").innerHTML = chips
+            .map(c => `<span class="config-chip">${c}</span>`)
+            .join("");
+    }
+
+    function renderInteractiveScatter(dataset) {
+        const xField = document.getElementById("x-axis").value;
+        const yField = document.getElementById("y-axis").value;
+
+        const traces = categories(dataset).map(category => {
+            const catData = dataset.filter(d => d.category === category).filter(d => Number.isFinite(d[xField]) && Number.isFinite(d[yField]));
+            return {
+                x: catData.map(d => d[xField]),
+                y: catData.map(d => d[yField]),
+                mode: "markers",
+                type: "scatter",
+                name: category,
+                text: catData.map(d => `Scenario: ${d.id}<br>Accuracy: ${fmt(d.accuracy_score, 3)}<br>E2E: ${fmt(d.e2e_ms, 0)} ms`),
+                hovertemplate: "%{text}<br>X=%{x}<br>Y=%{y}<extra></extra>",
+                marker: {
+                    size: catData.map(d => 10 + Math.min((d.plan_steps || 0) * 1.2, 18)),
+                    line: { width: 1, color: "#ffffff" },
+                    opacity: 0.84
+                }
+            };
+        });
+
+        const layout = {
+            hovermode: "closest",
+            xaxis: { title: axisTitles[xField] },
+            yaxis: { title: axisTitles[yField] },
+            plot_bgcolor: "#f9fcfd",
+            paper_bgcolor: "white",
+            margin: { t: 18, r: 12, b: 55, l: 64 }
+        };
+
+        Plotly.newPlot("plot-scatter", traces, layout, plotConfig);
+    }
+
+    function renderPhaseStacked(dataset) {
+        const scenarioLabels = dataset.map(d => `S${d.id}`);
+        const traces = [
+            { name: "discover_ms", values: dataset.map(d => d.discover_ms), color: "#5fa8d3" },
+            { name: "plan_ms", values: dataset.map(d => d.plan_ms), color: "#1b4965" },
+            { name: "execute_ms", values: dataset.map(d => d.execute_ms), color: "#e4632a" },
+            { name: "summarize_ms", values: dataset.map(d => d.summarize_ms), color: "#63b995" }
+        ].map(t => ({
+            x: scenarioLabels,
+            y: t.values,
+            name: t.name,
+            type: "bar",
+            marker: { color: t.color }
+        }));
+
+        Plotly.newPlot("plot-phase-stacked", traces, {
+            barmode: "stack",
+            xaxis: { title: "Scenario" },
+            yaxis: { title: "Milliseconds" },
+            margin: { t: 20, r: 10, b: 50, l: 62 }
+        }, plotConfig);
+    }
+
+    function renderLatencyHistogram(dataset) {
+        Plotly.newPlot("plot-latency-hist", [{
+            x: dataset.map(d => d.e2e_ms),
+            type: "histogram",
+            marker: { color: "#00777e" },
+            nbinsx: 8,
+            hovertemplate: "Latency bin: %{x}<br>Count: %{y}<extra></extra>"
+        }], {
+            xaxis: { title: "End-to-End Latency (ms)" },
+            yaxis: { title: "Scenario Count" },
+            margin: { t: 20, r: 10, b: 52, l: 56 }
+        }, plotConfig);
+    }
+
+    function renderTokenStacked(dataset) {
+        const scenarioLabels = dataset.map(d => `S${d.id}`);
+        const traces = [
+            { name: "Plan", values: dataset.map(d => d.token_plan_total), color: "#1b4965" },
+            { name: "Execute Arg Resolution", values: dataset.map(d => d.token_exec_total), color: "#e4632a" },
+            { name: "Summarize", values: dataset.map(d => d.token_sum_total), color: "#63b995" }
+        ].map(t => ({
+            x: scenarioLabels,
+            y: t.values,
+            name: t.name,
+            type: "bar",
+            marker: { color: t.color }
+        }));
+
+        Plotly.newPlot("plot-token-stacked", traces, {
+            barmode: "stack",
+            xaxis: { title: "Scenario" },
+            yaxis: { title: "Tokens" },
+            margin: { t: 20, r: 10, b: 50, l: 62 }
+        }, plotConfig);
+    }
+
+    function renderPromptVsCompletion(dataset) {
+        const scenarioLabels = dataset.map(d => `S${d.id}`);
+        Plotly.newPlot("plot-prompt-completion", [
+            {
+                x: scenarioLabels,
+                y: dataset.map(d => d.token_prompt_tokens),
+                name: "Prompt Tokens",
+                type: "bar",
+                marker: { color: "#0f5f6a" }
+            },
+            {
+                x: scenarioLabels,
+                y: dataset.map(d => d.token_completion_tokens),
+                name: "Completion Tokens",
+                type: "bar",
+                marker: { color: "#f29d56" }
+            }
+        ], {
+            barmode: "group",
+            xaxis: { title: "Scenario" },
+            yaxis: { title: "Tokens" },
+            margin: { t: 20, r: 10, b: 50, l: 62 }
+        }, plotConfig);
+    }
+
+    function renderAccuracyCostBubble(dataset) {
+        const traces = categories(dataset).map(cat => {
+            const subset = dataset.filter(d => d.category === cat);
+            return {
+                type: "scatter",
+                mode: "markers",
+                name: cat,
+                x: subset.map(d => d.token_total_tokens),
+                y: subset.map(d => d.accuracy_score),
+                text: subset.map(d => `Scenario ${d.id}<br>Plan Steps: ${d.plan_steps}`),
+                hovertemplate: "%{text}<br>Tokens=%{x}<br>Accuracy=%{y:.3f}<extra></extra>",
+                marker: {
+                    size: subset.map(d => 8 + (d.plan_steps || 0) * 1.3),
+                    sizemode: "diameter",
+                    opacity: 0.8,
+                    line: { color: "white", width: 1 }
+                }
+            };
+        });
+
+        Plotly.newPlot("plot-acc-cost", traces, {
+            xaxis: { title: "Total Tokens" },
+            yaxis: { title: "Accuracy Score" },
+            margin: { t: 20, r: 12, b: 52, l: 62 }
+        }, plotConfig);
+    }
+
+    function renderEfficiency(dataset) {
+        const traces = categories(dataset).map(cat => {
+            const subset = dataset.filter(d => d.category === cat);
+            return {
+                type: "scatter",
+                mode: "markers+text",
+                name: cat,
+                x: subset.map(d => d.tool_calls_attempted),
+                y: subset.map(d => d.e2e_ms),
+                text: subset.map(d => `S${d.id}`),
+                textposition: "top center",
+                marker: {
+                    size: subset.map(d => 10 + Math.min((d.ms_per_tool_call || 0) / 3500, 16)),
+                    opacity: 0.82,
+                    line: { width: 1, color: "white" }
+                },
+                hovertemplate: "Scenario %{text}<br>Tool calls=%{x}<br>E2E=%{y:.0f} ms<extra></extra>"
+            };
+        });
+
+        Plotly.newPlot("plot-efficiency", traces, {
+            xaxis: { title: "Tool Calls Attempted" },
+            yaxis: { title: "E2E Latency (ms)" },
+            margin: { t: 20, r: 12, b: 52, l: 62 }
+        }, plotConfig);
+    }
+
+    function renderCategoryBoxes(dataset) {
+        const cats = categories(dataset);
+        const latData = byCategory(dataset, "e2e_ms");
+        const tokData = byCategory(dataset, "token_total_tokens");
+        const accData = byCategory(dataset, "accuracy_score");
+
+        const buildTraces = arr => cats.map((cat, i) => ({
+            type: "box",
+            name: cat,
+            y: arr[i],
+            boxpoints: "all",
+            jitter: 0.25,
+            pointpos: -1.6,
+            marker: { size: 6 }
+        }));
+
+        Plotly.newPlot("plot-box-latency", buildTraces(latData), {
+            yaxis: { title: "E2E Latency (ms)" },
+            margin: { t: 20, r: 10, b: 90, l: 62 }
+        }, plotConfig);
+
+        Plotly.newPlot("plot-box-tokens", buildTraces(tokData), {
+            yaxis: { title: "Total Tokens" },
+            margin: { t: 20, r: 10, b: 90, l: 62 }
+        }, plotConfig);
+
+        Plotly.newPlot("plot-box-accuracy", buildTraces(accData), {
+            yaxis: { title: "Accuracy Score" },
+            margin: { t: 20, r: 10, b: 90, l: 62 }
+        }, plotConfig);
+    }
+
+    function renderGauges(dataset) {
+        const successRate = pct(dataset.filter(d => d.success).length, dataset.length) || 0;
+        const passRate = pct(dataset.filter(d => d.accuracy_pass).length, dataset.length) || 0;
+
+        Plotly.newPlot("plot-gauges", [
+            {
+                type: "indicator",
+                mode: "gauge+number",
+                value: successRate,
+                title: { text: "Success Rate %" },
+                number: { suffix: "%", valueformat: ".1f" },
+                domain: { x: [0.0, 0.46], y: [0, 1] },
+                gauge: {
+                    axis: { range: [0, 100] },
+                    bar: { color: "#00777e" },
+                    steps: [
+                        { range: [0, 50], color: "#f3e6db" },
+                        { range: [50, 80], color: "#d7ece8" },
+                        { range: [80, 100], color: "#bde8da" }
+                    ]
+                }
+            },
+            {
+                type: "indicator",
+                mode: "gauge+number",
+                value: passRate,
+                title: { text: "Accuracy Pass %" },
+                number: { suffix: "%", valueformat: ".1f" },
+                domain: { x: [0.54, 1], y: [0, 1] },
+                gauge: {
+                    axis: { range: [0, 100] },
+                    bar: { color: "#e4632a" },
+                    steps: [
+                        { range: [0, 50], color: "#fde7de" },
+                        { range: [50, 80], color: "#f6d3c2" },
+                        { range: [80, 100], color: "#f1be9e" }
+                    ]
+                }
+            }
+        ], {
+            margin: { t: 35, r: 20, b: 10, l: 20 }
+        }, plotConfig);
+    }
+
+    function renderStepHeatmap(dataset) {
+        if (dataset.length === 0) {
+            Plotly.newPlot("plot-step-heatmap", [], {
+                annotations: [{ text: "No scenarios match current filters", showarrow: false }],
+                xaxis: { visible: false },
+                yaxis: { visible: false }
+            }, plotConfig);
+            return;
+        }
+
+        const maxSteps = Math.max(...dataset.map(d => (d.step_timings_ms || []).length));
+        const x = Array.from({ length: maxSteps }, (_, i) => i + 1);
+        const y = dataset.map(d => `S${d.id}`);
+        const z = [];
+        const text = [];
+
+        dataset.forEach(d => {
+            const rowZ = [];
+            const rowT = [];
+            for (let i = 1; i <= maxSteps; i++) {
+                const step = (d.step_timings_ms || []).find(s => s.step_number === i);
+                const stepExec = Number.isFinite(step?.step_execute_ms) ? step.step_execute_ms : null;
+                rowZ.push(stepExec);
+                rowT.push(step
+                    ? `Scenario ${d.id}<br>Step ${i}<br>Server: ${step.server}<br>Tool: ${step.tool}<br>step_execute_ms: ${stepExec !== null ? fmt(stepExec, 1) : "n/a"}`
+                    : `Scenario ${d.id}<br>Step ${i}<br>No step`
+                );
+            }
+            z.push(rowZ);
+            text.push(rowT);
+        });
+
+        Plotly.newPlot("plot-step-heatmap", [{
+            type: "heatmap",
+            x,
+            y,
+            z,
+            text,
+            hovertemplate: "%{text}<extra></extra>",
+            colorscale: "YlOrRd",
+            colorbar: { title: "ms" }
+        }], {
+            xaxis: { title: "Step Number" },
+            yaxis: { title: "Scenario" },
+            margin: { t: 20, r: 30, b: 52, l: 76 }
+        }, plotConfig);
+    }
+
+    function renderToolAndServerUsage(dataset) {
+        const toolAgg = {};
+        const serverAgg = {};
+
+        dataset.forEach(d => {
+            (d.step_timings_ms || []).forEach(step => {
+                const tool = (step.tool || "").toLowerCase();
+                const server = step.server || "Unknown";
+
+                if (!serverAgg[server]) {
+                    serverAgg[server] = 0;
+                }
+                serverAgg[server] += 1;
+
+                if (!tool || tool === "none" || tool === "null") {
+                    return;
+                }
+
+                const key = `${server}/${step.tool}`;
+                if (!toolAgg[key]) {
+                    toolAgg[key] = { count: 0, mcpTimes: [] };
+                }
+
+                toolAgg[key].count += 1;
+                if (Number.isFinite(step.mcp_call_ms)) {
+                    toolAgg[key].mcpTimes.push(step.mcp_call_ms);
+                }
+            });
+        });
+
+        const toolKeys = Object.keys(toolAgg).sort((a, b) => toolAgg[b].count - toolAgg[a].count);
+        const toolCounts = toolKeys.map(k => toolAgg[k].count);
+        const toolAvgMcp = toolKeys.map(k => mean(toolAgg[k].mcpTimes));
+
+        Plotly.newPlot("plot-tool-usage", [
+            {
+                type: "bar",
+                x: toolKeys,
+                y: toolCounts,
+                name: "Invocation Count",
+                marker: { color: "#1b4965" },
+                yaxis: "y"
+            },
+            {
+                type: "scatter",
+                mode: "lines+markers",
+                x: toolKeys,
+                y: toolAvgMcp,
+                name: "Mean MCP Call ms",
+                marker: { color: "#e4632a", size: 7 },
+                line: { color: "#e4632a", width: 2 },
+                yaxis: "y2"
+            }
+        ], {
+            xaxis: { title: "Server/Tool", tickangle: -35 },
+            yaxis: { title: "Count" },
+            yaxis2: {
+                title: "Mean MCP ms",
+                overlaying: "y",
+                side: "right"
+            },
+            margin: { t: 20, r: 64, b: 90, l: 52 },
+            legend: { orientation: "h", y: 1.12 }
+        }, plotConfig);
+
+        const serverKeys = Object.keys(serverAgg).sort((a, b) => serverAgg[b] - serverAgg[a]);
+        Plotly.newPlot("plot-server-usage", [{
+            type: "bar",
+            x: serverKeys,
+            y: serverKeys.map(k => serverAgg[k]),
+            marker: { color: "#00777e" },
+            hovertemplate: "Server=%{x}<br>Calls=%{y}<extra></extra>"
+        }], {
+            xaxis: { title: "Server" },
+            yaxis: { title: "Total Step Calls" },
+            margin: { t: 20, r: 10, b: 52, l: 52 }
+        }, plotConfig);
+    }
+
+    function renderJudgeRationales(dataset) {
+        const mode = document.getElementById("rationale-view").value;
+        const root = document.getElementById("judge-rationale-list");
+        const rows = mode === "failed"
+            ? dataset.filter(d => d.accuracy_pass === false)
+            : dataset.slice();
+
+        const sorted = rows.sort((a, b) => {
+            const passA = a.accuracy_pass ? 1 : 0;
+            const passB = b.accuracy_pass ? 1 : 0;
+            if (passA !== passB) {
+                return passA - passB;
+            }
+            return (a.accuracy_score ?? -1) - (b.accuracy_score ?? -1);
+        });
+
+        if (sorted.length === 0) {
+            root.innerHTML = `<div class="rationale-empty">No scenarios match the selected rationale view and filters.</div>`;
+            return;
+        }
+
+        root.innerHTML = sorted.map(d => {
+            const pass = d.accuracy_pass === true;
+            const statusText = pass ? "PASS" : "FAIL";
+            const statusClass = pass ? "pass" : "fail";
+            const acc = Number.isFinite(d.accuracy_score) ? fmt(d.accuracy_score, 3) : "n/a";
+            const task = judgeBit(d.accuracy_judge_task_completion);
+            const dataRetrieval = judgeBit(d.accuracy_judge_data_retrieval_accuracy);
+            const verification = judgeBit(d.accuracy_judge_generalized_result_verification);
+            const sequence = judgeBit(d.accuracy_judge_agent_sequence_correct);
+            const clarity = judgeBit(d.accuracy_judge_clarity_and_justification);
+            const hallucinations = judgeBit(d.accuracy_judge_hallucinations);
+            const notHall = hallucinations === null ? null : (hallucinations === 1 ? 0 : 1);
+
+            const terms = [task, dataRetrieval, verification, sequence, clarity, notHall];
+            const hasAllTerms = terms.every(v => Number.isFinite(v));
+            const computedJudgeScore = hasAllTerms
+                ? terms.reduce((sum, v) => sum + v, 0) / 6
+                : null;
+
+            const shownJudgeScore = Number.isFinite(d.accuracy_judge_score)
+                ? fmt(d.accuracy_judge_score, 3)
+                : "n/a";
+            const shownComputed = Number.isFinite(computedJudgeScore)
+                ? fmt(computedJudgeScore, 3)
+                : "n/a";
+
+            const termLabel = v => Number.isFinite(v) ? String(v) : "n/a";
+            const formulaText = `score=(task:${termLabel(task)} + data:${termLabel(dataRetrieval)} + verify:${termLabel(verification)} + seq:${termLabel(sequence)} + clarity:${termLabel(clarity)} + not_hall:${termLabel(notHall)})/6 = ${shownComputed} (reported=${shownJudgeScore})`;
+
+            const rationale = escapeHtml(d.accuracy_judge_rationale || "No judge rationale available.");
+            const candidateAnswer = escapeHtml(d.candidate_answer || "No candidate answer captured.");
+            const characteristicForm = escapeHtml(d.characteristic_form || "No characteristic form captured.");
+            const question = escapeHtml(d.question || "n/a");
+            const category = escapeHtml(d.category || "Unknown");
+            return `
+                <article class="rationale-item ${statusClass}">
+                    <div class="rationale-head">
+                        <div class="rationale-id">Scenario ${d.id} - ${category}</div>
+                        <span class="rationale-status ${statusClass}">${statusText}</span>
+                    </div>
+                    <div class="rationale-meta">Accuracy: ${acc} | E2E: ${fmt(d.e2e_ms, 0)} ms | Question: ${question}</div>
+                    <p class="rationale-formula">${formulaText}</p>
+                    <p class="rationale-block-title">Candidate Answer</p>
+                    <p class="rationale-candidate">${candidateAnswer}</p>
+                    <p class="rationale-block-title">Characteristic Form</p>
+                    <p class="rationale-characteristic">${characteristicForm}</p>
+                    <p class="rationale-block-title">Judge Rationale</p>
+                    <p class="rationale-text">${rationale}</p>
+                </article>
+            `;
+        }).join("");
+    }
+
+    function renderAll() {
+        const activeData = getFilteredData();
+        renderRunConfig(activeData);
+        renderCards(activeData);
+        renderInteractiveScatter(activeData);
+        renderPhaseStacked(activeData);
+        renderLatencyHistogram(activeData);
+        renderTokenStacked(activeData);
+        renderPromptVsCompletion(activeData);
+        renderAccuracyCostBubble(activeData);
+        renderEfficiency(activeData);
+        renderCategoryBoxes(activeData);
+        renderGauges(activeData);
+        renderStepHeatmap(activeData);
+        renderToolAndServerUsage(activeData);
+        renderJudgeRationales(activeData);
+    }
+
+    document.getElementById("x-axis").addEventListener("change", renderAll);
+    document.getElementById("y-axis").addEventListener("change", renderAll);
+    document.getElementById("category-filter").addEventListener("change", renderAll);
+    document.getElementById("scenario-filter").addEventListener("change", renderAll);
+    document.getElementById("rationale-view").addEventListener("change", renderAll);
+    window.addEventListener("resize", () => {
+        [
+            "plot-scatter",
+            "plot-phase-stacked",
+            "plot-latency-hist",
+            "plot-token-stacked",
+            "plot-prompt-completion",
+            "plot-acc-cost",
+            "plot-efficiency",
+            "plot-box-latency",
+            "plot-box-tokens",
+            "plot-box-accuracy",
+            "plot-gauges",
+            "plot-step-heatmap",
+            "plot-tool-usage",
+            "plot-server-usage"
+        ].forEach(id => Plotly.Plots.resize(document.getElementById(id)));
+    });
+
+    populateFilters();
+    renderAll();
+</script>
+
+</body>
+</html>

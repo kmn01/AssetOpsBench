@@ -124,6 +124,86 @@ async def test_diagnostics_skill_with_fake_mcp(tmp_path, monkeypatch):
 
 
 @pytest.mark.anyio
+async def test_mapping_skill_passes_prior_step_fields(tmp_path, monkeypatch):
+    p = tmp_path / "st.json"
+    p.write_text(
+        json.dumps({"installed": ["assetopsbench/fmsr_sensor_failure_mapping"]}),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("SKILL_INSTALL_STATE_PATH", str(p))
+    pool = FakeSiblingMCPPool(
+        {
+            ("iot", "sensors"): {
+                "site_name": "MAIN",
+                "asset_id": "Chiller 6",
+                "total_sensors": 1,
+                "sensors": ["Chiller 6 Supply Temperature"],
+                "message": "ok",
+            },
+            ("fmsr", "get_failure_modes"): {
+                "asset_name": "Chiller 6",
+                "failure_modes": ["Compressor Overheating"],
+            },
+            ("fmsr", "get_failure_mode_sensor_mapping"): {
+                "metadata": {},
+                "fm2sensor": {
+                    "Compressor Overheating": ["Chiller 6 Supply Temperature"]
+                },
+                "sensor2fm": {
+                    "Chiller 6 Supply Temperature": ["Compressor Overheating"]
+                },
+                "full_relevancy": [],
+            },
+        }
+    )
+    set_sibling_pool_for_testing(pool)
+    r = await run_skill_impl(
+        "assetopsbench/fmsr_sensor_failure_mapping",
+        {
+            "site_name": "MAIN",
+            "asset_id": "Chiller 6",
+            "asset_name": "Chiller 6",
+        },
+    )
+    d = r.model_dump()
+    assert d["overall_ok"] is True
+    assert pool.calls[2][2]["failure_modes"] == ["Compressor Overheating"]
+    assert pool.calls[2][2]["sensors"] == ["Chiller 6 Supply Temperature"]
+
+
+@pytest.mark.anyio
+async def test_tsfm_forecast_skill_omits_missing_optional_args(tmp_path, monkeypatch):
+    p = tmp_path / "st.json"
+    p.write_text(
+        json.dumps({"installed": ["assetopsbench/tsfm_forecast_sensor"]}),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("SKILL_INSTALL_STATE_PATH", str(p))
+    pool = FakeSiblingMCPPool(
+        {
+            ("tsfm", "run_tsfm_forecasting"): {
+                "status": "success",
+                "results_file": "/tmp/forecast.json",
+                "message": "ok",
+            },
+        }
+    )
+    set_sibling_pool_for_testing(pool)
+    r = await run_skill_impl(
+        "assetopsbench/tsfm_forecast_sensor",
+        {
+            "dataset_path": "chiller.csv",
+            "timestamp_column": "Timestamp",
+            "target_columns": ["Chiller 6 Supply Temperature"],
+        },
+    )
+    d = r.model_dump()
+    assert d["overall_ok"] is True
+    assert "model_checkpoint" not in pool.calls[0][2]
+    assert "forecast_horizon" not in pool.calls[0][2]
+
+
+@pytest.mark.anyio
 async def test_safety_clearance_fail_when_no_sensors(tmp_path, monkeypatch):
     p = tmp_path / "st.json"
     p.write_text(

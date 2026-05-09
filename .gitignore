@@ -188,8 +188,6 @@ cython_debug/
 
 # Local benchmark outputs and W&B client data
 runs/
-!runs/
-!runs/quick_one_rerun_4_20_26.jsonl
 wandb/
 main.json
 
@@ -206,3 +204,6 @@ CLAUDE.md
 mcp/couchdb/sample_data/bulk_docs.json
 mcp/servers/tsfm/artifacts/tsfm_models/
 src/tmp/
+
+# Large local CouchDB IoT sample data (too big for GitHub; keep local only)
+src/couchdb/sample_data/iot/data.json
