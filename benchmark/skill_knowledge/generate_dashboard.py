@@ -19,18 +19,26 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_TEMPLATE = REPO_ROOT / "dashboards" / "template.html"
 
 
-def _escape_jsonl_for_js(jsonl_text: str) -> str:
-    escaped = jsonl_text.replace("`", r"\`").replace("${", r"\${")
-    return escaped.replace("</script>", r"<\/script>")
-
-
 def _replace_jsonl_block(template_html: str, jsonl_text: str) -> str:
-    pattern = re.compile(r"const jsonlData = String\.raw`.*?`;", flags=re.DOTALL)
-    replacement = f"const jsonlData = String.raw`{_escape_jsonl_for_js(jsonl_text)}`;"
-    updated, count = pattern.subn(lambda _: replacement, template_html, count=1)
-    if count != 1:
-        raise ValueError("Template missing expected `const jsonlData = String.raw`...`;` block")
-    return updated
+    """Embed JSONL as a JS string via json.dumps.
+
+    String.raw`...` was incorrect: \\` stays in the decoded string (String.raw does not
+    strip that escape), which leaves invalid \\` sequences inside JSON for JSON.parse.
+    json.dumps matches build_dashboard.py and yields valid JavaScript string literals.
+    """
+    replacement = f"const jsonlData = {json.dumps(jsonl_text)};"
+    for pattern in (
+        re.compile(r"const jsonlData = String\.raw`.*?`;", flags=re.DOTALL),
+        re.compile(r'const jsonlData = ""\s*;'),
+    ):
+        # re.sub interprets \n, \t, \g, etc. in the replacement string — corrupting json.dumps output.
+        updated, count = pattern.subn(lambda _: replacement, template_html, count=1)
+        if count == 1:
+            return updated
+    raise ValueError(
+        "Template missing embed block: expected `const jsonlData = String.raw`...`;` "
+        'or placeholder `const jsonlData = \"\";`'
+    )
 
 
 def _replace_title(html_text: str, title: str) -> str:
