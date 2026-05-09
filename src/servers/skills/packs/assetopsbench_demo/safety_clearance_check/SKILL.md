@@ -29,8 +29,7 @@ Use this skill when the user asks whether an asset is safe, ready, or cleared fo
 
 1. Verify IoT sensors are available for the asset.
 2. Retrieve recent work order history.
-3. Apply a simple safety/clearance readiness check.
-4. Return a structured clearance status summary.
+3. Return a structured clearance-readiness summary from the retrieved evidence.
 
 ## Execution Plan
 
@@ -52,15 +51,6 @@ Use this skill when the user asks whether an asset is safe, ready, or cleared fo
       "tool": "get_work_orders",
       "arguments": {
         "equipment_id": "$asset_id"
-      }
-    },
-    {
-      "name": "clearance_evaluation",
-      "server": "wo",
-      "tool": "evaluate_clearance",
-      "arguments": {
-        "sensors": "$iot_sensors",
-        "work_orders": "$recent_work_orders"
       }
     }
   ]

@@ -21,6 +21,15 @@ def skill_install_state_path(tmp_path, monkeypatch):
             {
                 "installed": [
                     "assetopsbench/pump_seal_inspection",
+                    "assetopsbench/iot_asset_inventory",
+                    "assetopsbench/iot_sensor_inventory_for_asset",
+                    "assetopsbench/fmsr_failure_modes_for_asset",
+                    "assetopsbench/fmsr_sensor_failure_mapping",
+                    "assetopsbench/iot_sensor_data_window",
+                    "assetopsbench/tsfm_forecast_sensor",
+                    "assetopsbench/tsfm_anomaly_detect_sensor",
+                    "assetopsbench/multiagent_iot_to_tsfm_forecast",
+                    "assetopsbench/multiagent_iot_to_tsfm_anomaly",
                     "assetopsbench_demo/asset_diagnostics_bundle",
                     "assetopsbench_demo/safety_clearance_check",
                 ]

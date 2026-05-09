@@ -33,6 +33,29 @@ _JSON_PLAN = """\
 ```
 """
 
+_JSON_PLAN_WITH_STEP_FIELDS = """\
+# Step output references
+
+```json
+{
+  "steps": [
+    {
+      "name": "iot_sensors",
+      "server": "iot",
+      "tool": "sensors",
+      "arguments": {"site_name": "$site_name", "asset_id": "$asset_id"}
+    },
+    {
+      "name": "sensor_failure_mapping",
+      "server": "fmsr",
+      "tool": "get_failure_mode_sensor_mapping",
+      "arguments": {"sensors": "$iot_sensors.sensors"}
+    }
+  ]
+}
+```
+"""
+
 
 def test_required_args_from_yaml_inputs_required_only():
     names = extract_required_args_from_skill_instructions(_PUMP_FRONT)
@@ -42,3 +65,8 @@ def test_required_args_from_yaml_inputs_required_only():
 def test_required_args_from_json_plan_excludes_step_names():
     names = extract_required_args_from_skill_instructions(_JSON_PLAN)
     assert names == ["site_name"]
+
+
+def test_required_args_from_json_plan_excludes_dotted_step_outputs():
+    names = extract_required_args_from_skill_instructions(_JSON_PLAN_WITH_STEP_FIELDS)
+    assert names == ["asset_id", "site_name"]
