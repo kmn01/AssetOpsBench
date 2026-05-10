@@ -610,6 +610,11 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Optional HF dataset config/subset name.",
     )
     p.add_argument(
+        "--no-skills-mcp",
+        action="store_true",
+        help="Remove the skills MCP server from the agent's available tools.",
+    )
+    p.add_argument(
         "--hf-split",
         default="train",
         help="HF split to use (train/test/validation/etc.).",
@@ -850,6 +855,7 @@ async def _amain() -> None:
     args = _build_parser().parse_args()
     from agent.plan_execute.rag_runner import RAGRunner
     from agent.plan_execute.runner import PlanExecuteRunner
+    from agent.plan_execute.executor import DEFAULT_SERVER_PATHS
     from llm.litellm import LiteLLMBackend
 
     if args.source == "hf":
@@ -898,12 +904,22 @@ async def _amain() -> None:
     judge_llm = llm
     if args.accuracy_mode in ("llm-judge", "both"):
         judge_llm = LiteLLMBackend(model_id=args.judge_model_id)
+
+    server_paths = None
+    if args.no_skills_mcp:
+        server_paths = {
+            name: path
+            for name, path in DEFAULT_SERVER_PATHS.items()
+            if name != "skills"
+        }
+
     if args.runner_mode == "rag":
         runner = RAGRunner(llm=llm)
     else:
-        runner = PlanExecuteRunner(llm=llm)
+        runner = PlanExecuteRunner(llm=llm, server_paths=server_paths)
 
     skills_runtime_meta = _detect_skills_runtime_metadata()
+    skills_runtime_meta["skills_mcp_enabled_for_run"] = not args.no_skills_mcp
 
     from observability.benchmark_wandb import WandbBenchmarkBatch
 
