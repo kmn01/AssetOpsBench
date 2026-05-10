@@ -10,15 +10,15 @@
 
 - **Team Name:** Team 3
 - **Members:**
-  - Yeshitha Bhuvanesh (yb2649) — *Knowledge Plugin / ChromaDB RAG implementation*
-  - Andrew Li (ayl2159) — *Benchmark execution, vibration baseline and dashboard*
-  - Trisha Maturi (tm3530) — *Markdown-Based Skills MCP server architecture*
-  - Kirthana Natarajan (kmn2161) — *Skills MCP server architecture*
-  - Thai On (tqo2101) — *Benchmark execution and dashboards*
+  - Yeshitha Bhuvanesh (yb2649) — *Baseline RAG, Knowledge Plugin*
+  - Andrew Li (ayl2159) — *Benchmarking, dashboard visualizations, bug fixes*
+  - Trisha Maturi (tm3530) — *Skills MCP server architecture*
+  - Kirthana Natarajan (kmn2161) — *Observability infra, Baseline, Skills MCP Server*
+  - Thai On (tqo2101) — *Benchmarking and commands, dashboard refinements*
 
 ## Submission
 
-- **GitHub repository:** [https://github.com/kmn01/AssetOpsBench/tree/dev](https://github.com/kmn01/AssetOpsBench/tree/dev)
+- **GitHub repository:** [https://github.com/kmn01/AssetOpsBench/](https://github.com/kmn01/AssetOpsBench/)
 - **Final report:** [`deliverables/HPML_Final_Report.pdf`](deliverables/HPML_Final_Report.pdf)
 - **Final presentation:** [`deliverables/HPML_Final_Presentation.pptx`](deliverables/HPML_Final_Presentation.pptx)
 - **Experiment-tracking dashboard:** [https://wandb.ai/kmn01-columbia-university/HPML%20Project/](https://wandb.ai/kmn01-columbia-university/HPML%20Project/)
@@ -39,7 +39,7 @@ The system being optimized is an agentic inference pipeline where an LLM must di
 
 Briefly describe the model(s) and stack you used:
 
-- **Model architecture:** LLM-backed plan-and-execute agent workflow using MCP tools. The default runner model in the repo is `watsonx/meta-llama/llama-4-maverick-17b-128e-instruct-fp8`; the runner also supports LiteLLM-backed models through `--model-id`.
+- **Model architecture:** LLM-backed plan-and-execute agent workflow using MCP tools. The default runner model in the repo is `watsonx/meta-llama/llama-4-maverick-17b-128e-instruct-fp8`; the runner also supports LiteLLM-backed models through `--model-id`. 17M parameters.
 - **Framework:** Python 3.12+, `uv`, Model Context Protocol / FastMCP, LiteLLM, IBM WatsonX, CouchDB, Pydantic, NumPy, Pandas, SciPy, ChromaDB, and sentence-transformers.
 - **Dataset:** AssetOpsBench industrial asset operations data and sample CouchDB databases. License: Apache license 2.0.
 - **Custom layers or modifications:** 
@@ -47,27 +47,23 @@ Briefly describe the model(s) and stack you used:
   - Added `SKILL.md`-based skill files and related skill-server improvements.
   - Implemented / benchmarked a Knowledge Plugin using ChromaDB persistent indexing, local sentence-transformer embeddings, and citation-formatted retrieval results.
   - Added benchmark tooling for skill/knowledge experiments, including latency, token/context, reliability, heuristic accuracy, and LLM-judge scoring.
-- **Hardware target:** [NVIDIA A100 / H100 / Jetson Orin / Cloud TPU v5e / Apple M-series / IBM AIU, etc.]
+- **Hardware target:** IBM’s WatsonX LLM API through LiteLLM
 
 ---
 
 ## 3. Final Results Summary
 
-Replace the numbers below with your measured values. Add or remove rows to fit your study.
+RAG (Baseline) vs KP:
 
 | Metric | Baseline | Optimized | Δ (Improvement) |
 | ------ | -------- | --------- | --------------- |
-| Task Success / Correctness | XX.XX% | XX.XX% | ±X.XX pp |
-| Plan Steps per Query | XX steps | XX steps | XX% fewer |
-| MCP Tool Calls per Query | XX calls | XX calls | XX% fewer |
-| End-to-End Latency (p50) | XX.XX s | XX.XX s | XX% faster |
-| Skill Invocation Success Rate | XX.XX% | XX.XX% | ±X.XX pp |
-| Inference Throughput | XXX queries/min | XXX queries/min | XX× higher |
-| Peak Memory | XX GB | XX GB | XX% less |
+| Number of test cases passed |  0.683 | 0.917 | 0.234 pp |
+| Summarize Total Tokens | 1900 | 6321 | 3.3x more |
+| Prompt Total Tokens | 1244 | 12634 | 10x more |
+| Total Tokens | 2003 | 13900 | 7x more |
+| End-to-End Latency | 25257 ms | 162433 ms | 137174ms more |
 
-**Hardware:** [e.g., 1× NVIDIA A100 80GB SXM, CUDA 12.4, PyTorch 2.5, Ubuntu 22.04]
-
-**Headline result (one sentence):** *e.g., "Using MCP skills reduced average plan length from X steps to Y steps and improved end-to-end query latency by Z% on pump-maintenance scenarios, while preserving answer correctness."*
+**Headline result (one sentence):** *The optimized Knowledge Plugin pipeline significantly improves benchmark accuracy compared to baseline RAG systems, but this improvement comes with substantially higher token usage and latency.*
 
 ---
 
@@ -165,7 +161,7 @@ Public experiment-tracking dashboard with training and evaluation metrics, syste
 >
 > *Platform used:* Weights & Biases
 
-Verify the link opens in an incognito browser. The dashboard includes a curated **report** that walks through the optimization story. If your platform does not support public links (e.g., self-hosted MLflow), a static export is committed under `results/dashboard/` instead.
+The dashboard includes a curated **report** that walks through the optimization story. (located in the 'Reports' tab of Wandb).
 
 ### C. Dataset and Local Services
 
@@ -323,12 +319,13 @@ uv run python benchmark/skill_knowledge/run_all_benchmarks.py
 
 A short narrative (3–6 bullets) summarizing what you found. Include 1–2 representative figures from `results/` directly in this README so a reader gets the gist without opening Wandb.
 
-- *Optimization 1 (MCP Skills Server):* The MCP Skills Server reduces orchestration overhead by turning repeated multi-tool maintenance workflows into discoverable, governable skill calls, so the agent can invoke one namespaced skill instead of manually coordinating several low-level MCP servers.
+- *Optimization 1 (MCP Skills Server):* The MCP Skills Server targets the planning and arg resolution overhead bottleneck by turning repeated multi-tool maintenance workflows into discoverable skill calls, so the agent can invoke one namespaced skill instead of looping over multiple MCP servers to plan task execution.
 - *Optimization 2 (Knowledge Plugin):* The Knowledge Plugin reduces retrieval overhead and improves answer grounding by pre-indexing asset documentation in ChromaDB, enabling targeted semantic lookup with citations instead of repeatedly searching through raw documents at inference time.
 - *Optimization 3 (Benchmarking):* Added skill + knowledge benchmark scripts that record end-to-end latency, phase timings, per-step timings, tool-call success, token/context usage, heuristic accuracy, strict LLM-judge accuracy, and W&B logging.
-- *What did not work:* [briefly note any optimization that failed or regressed performance, and why you think it failed].
+- *What did not work:* Pursuing higher accuracy significantly regressed latency. HF3 reached strong accuracy at 0.917, but mean e2e latency rose to 114s, far slower than HF/HF2 at 20–22s. Official KP Maverick was even slower at 146s e2e, mainly due to long tool execution chains, while official RAG Maverick was fast but too inaccurate for a 90% target.
 
-![Baseline vs Optimized latency](results/figures/latency_comparison.png)
+![Accuracy Score Comparison](results/figures/AccuracyScoreComparison.png)
+![Token Usage Comparison](results/figures/TokenUsageComparison.png)
 
 ---
 
@@ -339,6 +336,7 @@ A short narrative (3–6 bullets) summarizing what you found. Include 1–2 repr
 - The Knowledge Plugin lives under `src/servers/knowledge/` and uses ChromaDB persistent indexing with local sentence-transformer embeddings.
 - Skill + knowledge benchmark scripts live under `benchmark/skill_knowledge/`.
 - Benchmark outputs are written as JSONL files, typically under `runs/`.
+- Dashboard showing runs lives under `dashboard/`.
 - All secrets, including WatsonX, LiteLLM, Hugging Face, and W&B credentials, are loaded from environment variables. See `.env.public`.
 
 ### AI Use Disclosure
@@ -352,11 +350,11 @@ A short narrative (3–6 bullets) summarizing what you found. Include 1–2 repr
 
 **Tool(s) used:** *ChatGPT, GitHub Copilot*
 
-**Specific purpose:** *e.g., debugged a CUDA OOM error, clarified SM occupancy, polished prose in the deliverables (readme, report, slides)*
+**Specific purpose:** *polished prose in deliverables (README, report, slides); drafted documentation in docs/; created skills using the scenario dataset as the primary grounding source; minor code writing/debugging support after project idea and design were team-authored)*
 
-**Sections affected:** *e.g., src/profile.py setup, README §6 results narrative, report §V Discussion*
+**Sections affected:** *README prose; report narrative; slide deck wording; `docs/` documentation; skill definitions/configuration grounded in the scenario dataset; code/comment edits for debugging*
 
-**How we verified correctness:** *e.g., re-ran every reported experiment ourselves; confirmed profiler-trace interpretations against the raw traces in results/; rewrote AI-suggested code in our own words and confirmed it produces the same numbers as the version we hand-wrote.*
+**How we verified correctness:** *manually reviewed and edited all AI-assisted text; checked skill behavior against the scenario dataset and expected outputs; reviewed documentation for consistency with implementation; inspected AI-assisted code changes and validated them through normal testing/execution/evaluation workflow*
 
 By submitting this project, the team confirms that the analysis, interpretations, and conclusions are our own, and that any AI assistance is fully disclosed above. The same disclosure block appears as an appendix in the final report.
 
@@ -375,7 +373,7 @@ If you build on this work, please cite:
   year   = {2026},
   note   = {HPML Spring 2026 Final Project, Columbia University},
   url    = {https://github.com/kmn01/AssetOpsBench/tree/dev}
-}
+}f
 ```
 
 ### Contact
