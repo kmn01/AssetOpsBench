@@ -349,7 +349,7 @@ A short narrative (3–6 bullets) summarizing what you found. Include 1–2 repr
 - [ ] No, we did not use any AI tool.
 - [X] Yes, we used AI assistance as described below.
 
-**Tool(s) used:** *ChatGPT, GitHub Copilot*
+**Tool(s) used:** *ChatGPT, GitHub Copilot, Cursor*
 
 **Specific purpose:** *polished prose in deliverables (README, report, slides); drafted documentation in docs/; created skills using the scenario dataset as the primary grounding source; minor code writing/debugging support after project idea and design were team-authored)*
 
