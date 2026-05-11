@@ -1,6 +1,5 @@
 import logging
 import math
-from typing import List
 
 # from sentence_transformers import SentenceTransformer
 # from sentence_transformers.util import cos_sim

@@ -12,12 +12,15 @@ an MCP-native implementation:
 
 from __future__ import annotations
 
+import asyncio
 import logging
+import time
 from pathlib import Path
 
 from llm import LLMBackend
 
 from .executor import Executor
+from .metrics import PlanExecuteMetrics
 from .planner import Planner
 from ..models import OrchestratorResult
 from ..runner import AgentRunner
@@ -33,8 +36,34 @@ Original question: {question}
 Step-by-step execution results:
 {results}
 
-Provide a concise, direct answer to the original question based on the results
-above. Do not repeat the individual steps — just give the final answer.
+Your task: Create a comprehensive, detailed answer to the original question. 
+
+IMPORTANT FORMATTING:
+1. Write a FULL, DETAILED explanation answering the user's question
+2. Include all relevant information, procedures, steps, and details
+3. Do NOT just list results - synthesize them into a coherent narrative
+4. At the END of your answer, add a "Sources & Citations" section that lists:
+   - Document name and page number for each source used
+   - Confidence/match percentage if available
+5. Format citations as:
+   ────────────────────
+   Sources & Citations:
+   ────────────────────
+   • Source: [PDF Name] - Page X (YY% match)
+   • Source: [PDF Name] - Pages X-Y (ZZ% match)
+
+Example answer structure:
+   "The pump maintenance procedures include:
+   1. Daily checks: ...
+   2. Weekly checks: ...
+   [detailed explanation]
+   
+   Sources & Citations:
+   ────────────────────
+   • Centrifugal Pump Seal Inspection Manual - Page 2 (87% match)
+   • pump_maintenance_handbook.pdf - Pages 5-7 (92% match)"
+
+Provide a complete answer based on the results above, with full details and citations at the end.
 """
 
 
@@ -83,17 +112,34 @@ class PlanExecuteRunner(AgentRunner):
             OrchestratorResult with the final answer, the generated plan, and
             the per-step execution history.
         """
+        t_run0 = time.monotonic()
+
         # 1. Discover
         _log.info("Discovering server capabilities...")
+        t0 = time.monotonic()
         server_descriptions = await self._executor.get_server_descriptions()
+        discover_ms = (time.monotonic() - t0) * 1000.0
 
-        # 2. Plan
+        skills_catalog = await self._executor.fetch_planner_skills_catalog()
+
+        # 2. Plan (thread: sync LLM must not block the asyncio event loop)
         _log.info("Planning...")
-        plan = self._planner.generate_plan(question, server_descriptions)
+        t0 = time.monotonic()
+        plan, plan_usage = await asyncio.to_thread(
+            self._planner.generate_plan,
+            question,
+            server_descriptions,
+            skills_catalog,
+        )
+        plan_ms = (time.monotonic() - t0) * 1000.0
         _log.info("Plan has %d step(s).", len(plan.steps))
 
         # 3. Execute
-        history = await self._executor.execute_plan(plan, question)
+        t0 = time.monotonic()
+        history = await self._executor.execute_plan(
+            plan, question, skills_catalog=skills_catalog
+        )
+        execute_ms = (time.monotonic() - t0) * 1000.0
 
         # 4. Summarise
         _log.info("Summarising...")
@@ -102,8 +148,26 @@ class PlanExecuteRunner(AgentRunner):
             + (r.response if r.success else f"ERROR: {r.error}")
             for r in history
         )
-        answer = self._llm.generate(
-            _SUMMARIZE_PROMPT.format(question=question, results=results_text)
+        summarize_prompt = _SUMMARIZE_PROMPT.format(
+            question=question, results=results_text
+        )
+        t0 = time.monotonic()
+        answer, summarize_usage = await asyncio.to_thread(
+            self._llm.generate_with_usage, summarize_prompt
+        )
+        summarize_ms = (time.monotonic() - t0) * 1000.0
+        e2e_ms = (time.monotonic() - t_run0) * 1000.0
+
+        metrics = PlanExecuteMetrics.from_phases_and_history(
+            discover_ms=discover_ms,
+            plan_ms=plan_ms,
+            execute_ms=execute_ms,
+            summarize_ms=summarize_ms,
+            e2e_ms=e2e_ms,
+            history=history,
+            plan_step_count=len(plan.steps),
+            plan_usage=plan_usage,
+            summarize_usage=summarize_usage,
         )
 
         return OrchestratorResult(
@@ -111,4 +175,5 @@ class PlanExecuteRunner(AgentRunner):
             answer=answer,
             plan=plan,
             history=history,
+            metrics=metrics,
         )

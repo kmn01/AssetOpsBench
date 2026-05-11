@@ -30,6 +30,15 @@ class TestGetFailureModes:
         assert len(data["failure_modes"]) == 7
 
     @pytest.mark.anyio
+    async def test_centrifugal_pump_returns_hardcoded(self):
+        """Avoids LLM round-trip for pump diagnostics / pump seal skill demos."""
+        data = await call_tool(
+            mcp, "get_failure_modes", {"asset_name": "centrifugal pump"}
+        )
+        assert "failure_modes" in data
+        assert any("Seal" in fm for fm in data["failure_modes"])
+
+    @pytest.mark.anyio
     async def test_ahu_returns_hardcoded(self):
         data = await call_tool(mcp, "get_failure_modes", {"asset_name": "ahu"})
         assert "failure_modes" in data
@@ -75,7 +84,11 @@ class TestGetFailureModeSensorMapping:
         data = await call_tool(
             mcp,
             "get_failure_mode_sensor_mapping",
-            {"asset_name": "Chiller 6", "failure_modes": _FAILURE_MODES, "sensors": _SENSORS},
+            {
+                "asset_name": "Chiller 6",
+                "failure_modes": _FAILURE_MODES,
+                "sensors": _SENSORS,
+            },
         )
         assert "fm2sensor" in data
         assert "sensor2fm" in data
@@ -88,7 +101,11 @@ class TestGetFailureModeSensorMapping:
         data = await call_tool(
             mcp,
             "get_failure_mode_sensor_mapping",
-            {"asset_name": "Chiller 6", "failure_modes": _FAILURE_MODES, "sensors": _SENSORS},
+            {
+                "asset_name": "Chiller 6",
+                "failure_modes": _FAILURE_MODES,
+                "sensors": _SENSORS,
+            },
         )
         assert len(data["full_relevancy"]) == 4
 
@@ -115,7 +132,11 @@ class TestGetFailureModeSensorMapping:
         data = await call_tool(
             mcp,
             "get_failure_mode_sensor_mapping",
-            {"asset_name": "Chiller 6", "failure_modes": _FAILURE_MODES, "sensors": _SENSORS},
+            {
+                "asset_name": "Chiller 6",
+                "failure_modes": _FAILURE_MODES,
+                "sensors": _SENSORS,
+            },
         )
         assert "error" in data
 

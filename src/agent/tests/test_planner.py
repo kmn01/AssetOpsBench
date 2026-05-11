@@ -142,9 +142,11 @@ class TestPlanner:
     def test_generate_plan_uses_llm_output(self, mock_llm):
         llm = mock_llm(_TWO_STEP)
         planner = Planner(llm)
-        plan = planner.generate_plan(
+        plan, _usage = planner.generate_plan(
             "List all assets",
-            {"iot": "  - sites(): List sites\n  - assets(site_name: string): List assets"},
+            {
+                "iot": "  - sites(): List sites\n  - assets(site_name: string): List assets"
+            },
         )
         assert len(plan.steps) == 2
         assert plan.steps[0].server == "iot"
@@ -154,9 +156,12 @@ class TestPlanner:
         captured = []
         llm = mock_llm(_TWO_STEP)
         original = llm.generate
-        llm.generate = lambda p, **kw: (captured.append(p), original(p))[1]
+        llm.generate = lambda p, temperature=0.0: (
+            captured.append(p),
+            original(p, temperature),
+        )[1]
 
-        Planner(llm).generate_plan(
+        _, _ = Planner(llm).generate_plan(
             "What sensors exist for CH-1?",
             {"iot": "  - sites(): List sites"},
         )
@@ -166,11 +171,17 @@ class TestPlanner:
         captured = []
         llm = mock_llm(_TWO_STEP)
         original = llm.generate
-        llm.generate = lambda p, **kw: (captured.append(p), original(p))[1]
+        llm.generate = lambda p, temperature=0.0: (
+            captured.append(p),
+            original(p, temperature),
+        )[1]
 
-        Planner(llm).generate_plan(
+        _, _ = Planner(llm).generate_plan(
             "Q",
-            {"iot": "  - sites(): List sites", "utilities": "  - current_date_time(): Get time"},
+            {
+                "iot": "  - sites(): List sites",
+                "utilities": "  - current_date_time(): Get time",
+            },
         )
         assert "iot" in captured[0]
         assert "utilities" in captured[0]
@@ -180,7 +191,59 @@ class TestPlanner:
         captured = []
         llm = mock_llm(_TWO_STEP)
         original = llm.generate
-        llm.generate = lambda p, **kw: (captured.append(p), original(p))[1]
+        llm.generate = lambda p, temperature=0.0: (
+            captured.append(p),
+            original(p, temperature),
+        )[1]
 
-        Planner(llm).generate_plan("Q", {"iot": "  - sites(): List sites"})
+        _, _ = Planner(llm).generate_plan("Q", {"iot": "  - sites(): List sites"})
         assert "#Args" not in captured[0]
+
+    def test_generate_plan_prompt_includes_skills_catalog_json(
+        self, mock_llm, monkeypatch
+    ):
+        captured = []
+        llm = mock_llm(_TWO_STEP)
+        original = llm.generate
+        llm.generate = lambda p, temperature=0.0: (
+            captured.append(p),
+            original(p, temperature),
+        )[1]
+
+        catalog = [
+            {
+                "fqid": "pack/skill_x",
+                "description": "Does a thing",
+                "required_args": ["site_name", "asset_id"],
+            }
+        ]
+        _, _ = Planner(llm).generate_plan(
+            "Run skill for P1",
+            {
+                "iot": "  - sites(): List sites",
+                "skills": "  - run_skill(...): Run skill",
+            },
+            catalog,
+        )
+        prompt = captured[0]
+        assert "pack/skill_x" in prompt
+        assert "Skills-first routing" in prompt
+        assert "required_args" in prompt
+
+    def test_generate_plan_without_skills_server_omits_skills_block(
+        self, mock_llm, monkeypatch
+    ):
+        captured = []
+        llm = mock_llm(_TWO_STEP)
+        original = llm.generate
+        llm.generate = lambda p, temperature=0.0: (
+            captured.append(p),
+            original(p, temperature),
+        )[1]
+
+        _, _ = Planner(llm).generate_plan(
+            "Q",
+            {"iot": "  - sites(): List sites"},
+            [{"fqid": "x/y", "description": "z", "required_args": []}],
+        )
+        assert "Skills-first routing" not in captured[0]

@@ -28,7 +28,9 @@ from pydantic import BaseModel
 
 load_dotenv()
 
-_log_level = getattr(logging, os.environ.get("LOG_LEVEL", "WARNING").upper(), logging.WARNING)
+_log_level = getattr(
+    logging, os.environ.get("LOG_LEVEL", "WARNING").upper(), logging.WARNING
+)
 logging.basicConfig(level=_log_level)
 logger = logging.getLogger("fmsr-mcp-server")
 
@@ -59,6 +61,7 @@ _RELEVANCY_PROMPT = (
 
 
 # ── Output parsers ────────────────────────────────────────────────────────────
+
 
 def _parse_numbered_list(text: str) -> list[str]:
     """Parse a numbered list response into a plain list of strings."""
@@ -95,11 +98,15 @@ def _build_llm():
 
     model_id = os.environ.get("FMSR_MODEL_ID", _DEFAULT_MODEL_ID)
     if model_id.startswith("watsonx/"):
-        missing = [v for v in ("WATSONX_APIKEY", "WATSONX_PROJECT_ID") if not os.environ.get(v)]
+        missing = [
+            v for v in ("WATSONX_APIKEY", "WATSONX_PROJECT_ID") if not os.environ.get(v)
+        ]
         if missing:
             raise RuntimeError(f"Missing env vars for WatsonX: {missing}")
     else:
-        missing = [v for v in ("LITELLM_API_KEY", "LITELLM_BASE_URL") if not os.environ.get(v)]
+        missing = [
+            v for v in ("LITELLM_API_KEY", "LITELLM_BASE_URL") if not os.environ.get(v)
+        ]
         if missing:
             raise RuntimeError(f"Missing env vars for LiteLLM: {missing}")
     return LiteLLMBackend(model_id)
@@ -115,6 +122,7 @@ except Exception as _e:
 
 
 # ── LLM call helpers with retry ───────────────────────────────────────────────
+
 
 def _call_asset2fm(asset_name: str) -> list[str]:
     """Query the LLM for failure modes of an asset. Retries up to _MAX_RETRIES times."""
@@ -143,6 +151,7 @@ def _call_relevancy(asset_name: str, failure_mode: str, sensor: str) -> dict:
 
 
 # ── Result models ─────────────────────────────────────────────────────────────
+
 
 class ErrorResult(BaseModel):
     error: str
@@ -216,9 +225,8 @@ def get_failure_mode_sensor_mapping(
     the full per-pair relevancy details.
 
     Note: one LLM call is made per (failure_mode, sensor) pair sequentially.
-    Keep both lists small (e.g. ≤5 failure modes, ≤10 sensors) to avoid long
-    runtimes. For a chiller with 7 failure modes and 20+ sensors the call will
-    take several minutes."""
+    Keep both lists small; composed skills typically cap inputs (e.g. 3×4 pairs).
+    Large grids (e.g. 7×20) can run many minutes and exceed MCP client timeouts."""
     if not asset_name:
         return ErrorResult(error="asset_name is required")
     if not failure_modes:

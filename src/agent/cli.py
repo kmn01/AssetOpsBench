@@ -21,13 +21,15 @@ _DEFAULT_MODEL = "watsonx/meta-llama/llama-4-maverick-17b-128e-instruct-fp8"
 _LOG_FORMAT = "%(asctime)s  %(levelname)-8s  %(name)s  %(message)s"
 _LOG_DATE_FORMAT = "%H:%M:%S"
 
+_log = logging.getLogger(__name__)
+
 
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="plan-execute",
         description="Run a question through the MCP plan-execute workflow.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog=f"""
+        epilog="""
 model-id format:
   The provider is encoded in the model-id prefix:
     watsonx/<model>          IBM WatsonX  (e.g. watsonx/meta-llama/llama-3-3-70b-instruct)
@@ -43,10 +45,14 @@ environment variables:
 
   LOG_LEVEL             Log level for MCP servers (default: WARNING)
 
+  MCP_CLIENT_TIMEOUT_SEC  Max seconds for each MCP connect / list_tools / call_tool
+                          in plan-execute (default in code: 600). Raises TimeoutError if exceeded.
+
 examples:
   plan-execute "What assets are at site MAIN?"
   plan-execute --model-id watsonx/ibm/granite-3-3-8b-instruct --show-plan "List sensors"
   plan-execute --model-id litellm_proxy/GCP/claude-4-sonnet "What are the failure modes?"
+  plan-execute --quiet --show-history --json "How many IoT observations exist for CH-1?"
   plan-execute --verbose --show-history --json "How many IoT observations exist for CH-1?"
 """,
     )
@@ -88,19 +94,48 @@ examples:
     parser.add_argument(
         "--verbose",
         action="store_true",
-        help="Show INFO-level progress logs on stderr (default: WARNING+ only).",
+        help="Show DEBUG-level logs on stderr (noisy; includes libraries).",
+    )
+    parser.add_argument(
+        "--quiet",
+        action="store_true",
+        help="Suppress progress logs (WARNING and above only on stderr).",
+    )
+    parser.add_argument(
+        "--rag-mode",
+        action="store_true",
+        help=(
+            "Use traditional RAG (Retrieval-Augmented Generation) instead of plan-execute. "
+            "Retrieves chunks then calls LLM for generation. Use to benchmark vs Knowledge Plugin. "
+            "Example: plan-execute 'What are pump procedures?' --rag-mode --show-history"
+        ),
     )
     return parser
 
 
-def _setup_logging(verbose: bool) -> None:
-    """Configure root logger to stderr; level depends on --verbose."""
-    level = logging.INFO if verbose else logging.WARNING
-    handler = logging.StreamHandler(sys.stderr)
-    handler.setFormatter(logging.Formatter(_LOG_FORMAT, datefmt=_LOG_DATE_FORMAT))
+def _setup_logging(*, verbose: bool, quiet: bool) -> None:
+    """Configure logging: by default show agent progress on stderr; optional quiet/debug."""
+    fmt = logging.Formatter(_LOG_FORMAT, datefmt=_LOG_DATE_FORMAT)
+    stderr_h = logging.StreamHandler(sys.stderr)
+    stderr_h.setFormatter(fmt)
     logging.root.handlers.clear()
-    logging.root.addHandler(handler)
-    logging.root.setLevel(level)
+    logging.root.addHandler(stderr_h)
+
+    if verbose:
+        logging.root.setLevel(logging.DEBUG)
+        return
+
+    if quiet:
+        logging.root.setLevel(logging.WARNING)
+        return
+
+    logging.root.setLevel(logging.WARNING)
+    agent_log = logging.getLogger("agent")
+    agent_log.setLevel(logging.INFO)
+    agent_h = logging.StreamHandler(sys.stderr)
+    agent_h.setFormatter(fmt)
+    agent_log.addHandler(agent_h)
+    agent_log.propagate = False
 
 
 def _build_llm(model_id: str):
@@ -142,16 +177,28 @@ def _print_section(title: str) -> None:
 
 async def _run(args: argparse.Namespace) -> None:
     from agent.plan_execute.runner import PlanExecuteRunner
+    from agent.plan_execute.rag_runner import RAGRunner
 
     llm = _build_llm(args.model_id)
     server_paths = _parse_servers(args.servers)
-    runner = PlanExecuteRunner(llm=llm, server_paths=server_paths)
+
+    # Choose runner based on mode
+    if args.rag_mode:
+        _log.info("Using traditional RAG mode (retrieval + LLM generation)")
+        runner = RAGRunner(llm=llm, server_paths=server_paths)
+    else:
+        _log.info("Using Knowledge Plugin mode (retrieval only, no LLM generation)")
+        runner = PlanExecuteRunner(llm=llm, server_paths=server_paths)
+
     result = await runner.run(args.question)
 
     if args.output_json:
         output = {
             "question": result.question,
             "answer": result.answer,
+            "metrics": (
+                result.metrics.to_json_dict() if result.metrics is not None else None
+            ),
             "plan": [
                 {
                     "step": s.step_number,
@@ -207,9 +254,13 @@ async def _run(args: argparse.Namespace) -> None:
 
 def main() -> None:
     from dotenv import load_dotenv
+
     load_dotenv()
     args = _build_parser().parse_args()
-    _setup_logging(args.verbose)
+    if args.verbose and args.quiet:
+        print("error: use only one of --verbose and --quiet", file=sys.stderr)
+        sys.exit(2)
+    _setup_logging(verbose=args.verbose, quiet=args.quiet)
     asyncio.run(_run(args))
 
 

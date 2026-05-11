@@ -17,6 +17,7 @@ from __future__ import annotations
 import os
 
 from .base import LLMBackend
+from .usage import CompletionUsage
 
 
 class LiteLLMBackend(LLMBackend):
@@ -32,6 +33,11 @@ class LiteLLMBackend(LLMBackend):
         self._model_id = model_id
 
     def generate(self, prompt: str, temperature: float = 0.0) -> str:
+        return self.generate_with_usage(prompt, temperature)[0]
+
+    def generate_with_usage(
+        self, prompt: str, temperature: float = 0.0
+    ) -> tuple[str, CompletionUsage]:
         import litellm
 
         kwargs: dict = {
@@ -40,6 +46,9 @@ class LiteLLMBackend(LLMBackend):
             "temperature": temperature,
             "max_tokens": 2048,
         }
+        if http_timeout := os.environ.get("LLM_HTTP_TIMEOUT_SEC"):
+            # Per-request timeout (seconds) so hung TCP to WatsonX / proxy fails fast.
+            kwargs["timeout"] = float(http_timeout)
 
         if self._model_id.startswith("watsonx/"):
             kwargs["api_key"] = os.environ["WATSONX_APIKEY"]
@@ -51,4 +60,6 @@ class LiteLLMBackend(LLMBackend):
             kwargs["api_base"] = os.environ["LITELLM_BASE_URL"]
 
         response = litellm.completion(**kwargs)
-        return response.choices[0].message.content
+        content = response.choices[0].message.content
+        usage = CompletionUsage.from_litellm_usage(getattr(response, "usage", None))
+        return content, usage

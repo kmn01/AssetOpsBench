@@ -1,17 +1,22 @@
 import datetime
 import decimal
 import re
-from typing import Any
 from typing import List
-from typing import List as TList
-from typing import Optional, Tuple, Type
+from typing import Optional, Type
 
 from eamlite.database import get_session
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field, create_model
 from sqlalchemy import and_
-from sqlalchemy.sql.sqltypes import (Boolean, Date, DateTime, Float, Integer,
-                                     Numeric, String)
+from sqlalchemy.sql.sqltypes import (
+    Boolean,
+    Date,
+    DateTime,
+    Float,
+    Integer,
+    Numeric,
+    String,
+)
 from sqlmodel import Session, SQLModel, select
 
 OPS = {"eq", "gt", "gte", "lt", "lte"}

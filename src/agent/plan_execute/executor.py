@@ -7,18 +7,36 @@ dict from the task description, original question, and prior step results.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
+import os
 import re
+import time
 from pathlib import Path
 from typing import Any
 
+import anyio
+
 from llm import LLMBackend
+from llm.usage import CompletionUsage
+from servers.common.mcp_stdio import make_stdio_params
+
 from .models import Plan, PlanStep, StepResult
+from .skills_catalog import build_planner_skill_entry
 
 _log = logging.getLogger(__name__)
 
 _REPO_ROOT = Path(__file__).parent.parent.parent.parent
+
+# Composed skills (e.g. FMSR FM×sensor mapping) can run many sequential LLM calls.
+_MCP_CLIENT_TIMEOUT_SEC = float(os.environ.get("MCP_CLIENT_TIMEOUT_SEC", "600"))
+
+# Arg-resolution uses sync llm.generate(); run it in a thread and bound wall time
+# so a hung provider does not freeze the asyncio loop indefinitely.
+_ARG_RESOLUTION_LLM_TIMEOUT_SEC = float(
+    os.environ.get("PLAN_EXECUTE_ARG_LLM_TIMEOUT_SEC", "180")
+)
 
 # Maps agent names to either a uv entry-point name (str) or a script Path.
 # Entry-point names are invoked as ``uv run <name>``; Paths fall back to
@@ -30,6 +48,8 @@ DEFAULT_SERVER_PATHS: dict[str, Path | str] = {
     "tsfm": "tsfm-mcp-server",
     "wo": "wo-mcp-server",
     "vibration": "vibration-mcp-server",
+    "skills": "skills-mcp-server",
+    "knowledge": "knowledge-mcp-server",
 }
 
 _PLACEHOLDER_RE = re.compile(r"\{step_(\d+)\}")
@@ -53,6 +73,24 @@ If a value comes from a list, use the first relevant element.
 
 JSON:"""
 
+# MCP lists ``arguments`` as an opaque object; generic rules + minimal skill JSON.
+_RUN_SKILL_ARGS_HINT_MINIMAL = """
+Extra rules for tool ``run_skill`` (skills server):
+- Output MUST be a JSON object with exactly two top-level keys: ``skill_id`` (string) and ``arguments`` (object). Do not flatten skill fields to the top level.
+- Nested keys belong inside ``arguments`` only.
+- ``skill_id`` MUST be the full FQID ``pack_id/skill_id`` chosen for this task.
+"""
+
+_RUN_SKILL_ARGS_HINT_WITH_CATALOG = (
+    _RUN_SKILL_ARGS_HINT_MINIMAL
+    + """
+- ``skill_id`` MUST be one of the FQIDs listed below.
+- ``arguments`` MUST include every key in that skill's ``required_args`` array (and may include optional keys implied by the task).
+
+Runnable skills for argument resolution (JSON):
+{skills_json}
+"""
+)
 
 class Executor:
     """Executes plan steps by routing tool calls to MCP servers."""
@@ -71,6 +109,7 @@ class Executor:
         """Query each registered MCP server and return formatted tool signatures."""
         descriptions: dict[str, str] = {}
         for name, path in self._server_paths.items():
+            _log.info("Listing tools from server %r ...", name)
             try:
                 tools = await _list_tools(path)
                 lines = []
@@ -85,7 +124,64 @@ class Executor:
                 descriptions[name] = f"  (unavailable: {exc})"
         return descriptions
 
-    async def execute_plan(self, plan: Plan, question: str) -> list[StepResult]:
+    async def fetch_planner_skills_catalog(self) -> list[dict[str, Any]]:
+        """Load runnable skills as minimal JSON rows for planning and arg resolution."""
+        path = self._server_paths.get("skills")
+        if path is None:
+            return []
+        try:
+            raw = await _call_tool(path, "list_skills", {})
+        except Exception as exc:  # noqa: BLE001
+            _log.debug("list_skills failed: %s", exc)
+            return []
+        try:
+            data = json.loads(raw)
+        except json.JSONDecodeError:
+            _log.debug("list_skills returned non-JSON")
+            return []
+        rows = data.get("skills")
+        if not isinstance(rows, list):
+            return []
+        out: list[dict[str, Any]] = []
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            if not row.get("runnable"):
+                continue
+            fqid = (row.get("fqid") or "").strip()
+            if not fqid:
+                continue
+            desc = row.get("description") or ""
+            atypes = row.get("asset_types")
+            asset_types = list(atypes) if isinstance(atypes, list) else None
+            instructions: str | None = None
+            try:
+                man_raw = await _call_tool(
+                    path, "get_skill_manifest", {"skill_id": fqid}
+                )
+                man = json.loads(man_raw)
+            except Exception:  # noqa: BLE001
+                man = {}
+            if isinstance(man, dict) and not man.get("error"):
+                ins = man.get("instructions")
+                instructions = ins if isinstance(ins, str) else None
+            out.append(
+                build_planner_skill_entry(
+                    fqid=fqid,
+                    description=desc,
+                    instructions=instructions,
+                    asset_types=asset_types,
+                )
+            )
+        return out
+
+    async def execute_plan(
+        self,
+        plan: Plan,
+        question: str,
+        *,
+        skills_catalog: list[dict[str, Any]] | None = None,
+    ) -> list[StepResult]:
         """Execute all plan steps in dependency order."""
         ordered = plan.resolved_order()
         total = len(ordered)
@@ -121,7 +217,13 @@ class Executor:
                 step.task,
             )
             schema = tool_schemas.get(step.server, {}).get(step.tool, "")
-            result = await self.execute_step(step, context, question, tool_schema=schema)
+            result = await self.execute_step(
+                step,
+                context,
+                question,
+                tool_schema=schema,
+                skills_catalog=skills_catalog,
+            )
             if result.success:
                 _log.info("Step %d OK.", step.step_number)
             else:
@@ -136,6 +238,7 @@ class Executor:
         context: dict[int, StepResult],
         question: str,
         tool_schema: str = "",
+        skills_catalog: list[dict[str, Any]] | None = None,
     ) -> StepResult:
         """Execute a single plan step.
 
@@ -144,6 +247,17 @@ class Executor:
         3. Call the LLM to generate tool arguments from the task and prior results.
         4. Call the tool and return its result.
         """
+        tool_name = (step.tool or "").strip()
+        if not tool_name or tool_name.lower() in ("none", "null"):
+            return StepResult(
+                step_number=step.step_number,
+                task=step.task,
+                server=step.server,
+                response=step.expected_output,
+                tool=tool_name,
+                tool_args=step.tool_args,
+            )
+
         server_path = self._server_paths.get(step.server)
         if server_path is None:
             return StepResult(
@@ -155,32 +269,21 @@ class Executor:
                     f"Unknown server '{step.server}'. "
                     f"Registered servers: {list(self._server_paths)}"
                 ),
-            )
-
-        if not step.tool or step.tool.lower() in ("none", "null"):
-            return StepResult(
-                step_number=step.step_number,
-                task=step.task,
-                server=step.server,
-                response=step.expected_output,
-                tool=step.tool,
+                tool=tool_name,
                 tool_args=step.tool_args,
             )
 
+        _log.info("Step %d: calling LLM to resolve args.", step.step_number)
+        t_arg = time.monotonic()
         try:
-            _log.info("Step %d: calling LLM to resolve args.", step.step_number)
-            resolved_args = await _resolve_args_with_llm(
-                question, step.task, step.tool, tool_schema, context, self._llm
-            )
-
-            response = await _call_tool(server_path, step.tool, resolved_args)
-            return StepResult(
-                step_number=step.step_number,
-                task=step.task,
-                server=step.server,
-                response=response,
-                tool=step.tool,
-                tool_args=resolved_args,
+            resolved_args, arg_usage = await _resolve_args_with_llm(
+                question,
+                step.task,
+                tool_name,
+                tool_schema,
+                context,
+                self._llm,
+                skills_catalog=skills_catalog,
             )
         except Exception as exc:  # noqa: BLE001
             return StepResult(
@@ -189,9 +292,49 @@ class Executor:
                 server=step.server,
                 response="",
                 error=str(exc),
-                tool=step.tool,
+                tool=tool_name,
                 tool_args=step.tool_args,
+                arg_resolution_ms=(time.monotonic() - t_arg) * 1000.0,
+                mcp_call_ms=None,
             )
+
+        arg_ms = (time.monotonic() - t_arg) * 1000.0
+        _log.info(
+            "Step %d: calling MCP tool %r on server %r.",
+            step.step_number,
+            tool_name,
+            step.server,
+        )
+        t_mcp = time.monotonic()
+        try:
+            response = await _call_tool(server_path, tool_name, resolved_args)
+        except Exception as exc:  # noqa: BLE001
+            return StepResult(
+                step_number=step.step_number,
+                task=step.task,
+                server=step.server,
+                response="",
+                error=str(exc),
+                tool=tool_name,
+                tool_args=resolved_args,
+                arg_resolution_ms=arg_ms,
+                mcp_call_ms=(time.monotonic() - t_mcp) * 1000.0,
+                arg_prompt_tokens=arg_usage.prompt_tokens,
+                arg_completion_tokens=arg_usage.completion_tokens,
+            )
+
+        return StepResult(
+            step_number=step.step_number,
+            task=step.task,
+            server=step.server,
+            response=response,
+            tool=tool_name,
+            tool_args=resolved_args,
+            arg_resolution_ms=arg_ms,
+            mcp_call_ms=(time.monotonic() - t_mcp) * 1000.0,
+            arg_prompt_tokens=arg_usage.prompt_tokens,
+            arg_completion_tokens=arg_usage.completion_tokens,
+        )
 
 
 # ── arg resolution ────────────────────────────────────────────────────────────
@@ -204,28 +347,54 @@ async def _resolve_args_with_llm(
     tool_schema: str,
     context: dict[int, StepResult],
     llm: LLMBackend,
-) -> dict:
+    *,
+    skills_catalog: list[dict[str, Any]] | None = None,
+) -> tuple[dict, CompletionUsage]:
     """Generate tool arguments from the task description and prior step results."""
     context_text = "\n".join(
         f"Step {n}: {r.response}" for n, r in sorted(context.items())
     )
     prompt = (
-        _ARG_RESOLUTION_PROMPT
-        .replace("{question}", question)
+        _ARG_RESOLUTION_PROMPT.replace("{question}", question)
         .replace("{task}", task)
         .replace("{tool}", tool)
         .replace("{tool_schema}", tool_schema or "(unknown)")
         .replace("{context}", context_text or "(none)")
     )
-    raw = llm.generate(prompt)
+    if tool.strip().lower() == "run_skill":
+        if skills_catalog:
+            slim = [
+                {
+                    "fqid": e.get("fqid"),
+                    "required_args": e.get("required_args", []),
+                }
+                for e in skills_catalog
+                if isinstance(e, dict) and e.get("fqid")
+            ]
+            prompt = prompt.rstrip() + _RUN_SKILL_ARGS_HINT_WITH_CATALOG.replace(
+                "{skills_json}", json.dumps(slim, indent=2)
+            )
+        else:
+            prompt = prompt.rstrip() + _RUN_SKILL_ARGS_HINT_MINIMAL
+    try:
+        raw, usage = await asyncio.wait_for(
+            asyncio.to_thread(llm.generate_with_usage, prompt),
+            timeout=_ARG_RESOLUTION_LLM_TIMEOUT_SEC,
+        )
+    except TimeoutError as exc:
+        raise TimeoutError(
+            f"LLM arg resolution exceeded {_ARG_RESOLUTION_LLM_TIMEOUT_SEC}s "
+            "(set PLAN_EXECUTE_ARG_LLM_TIMEOUT_SEC or fix connectivity / provider)"
+        ) from exc
     resolved = _parse_json(raw)
     if resolved is None:
         _log.warning(
             "Tool '%s': arg resolution returned no parseable JSON (response: %r…)",
-            tool, raw[:120],
+            tool,
+            (raw[:120] if raw else ""),
         )
-        return {}
-    return resolved
+        return {}, usage
+    return resolved, usage
 
 
 def _parse_json(raw: str) -> dict | None:
@@ -260,64 +429,51 @@ def _parse_json(raw: str) -> dict | None:
 # ── MCP protocol helpers ──────────────────────────────────────────────────────
 
 
-def _make_stdio_params(server: Path | str) -> "StdioServerParameters":
-    """Build StdioServerParameters for a server spec.
-
-    - str  → entry-point name; invoked as ``uv run <name>`` from the repo root.
-    - Path → invoked as ``python -m module.path`` when under the repo root
-             (supports relative imports), or directly otherwise.
-    """
-    from mcp import StdioServerParameters
-
-    if isinstance(server, str):
-        return StdioServerParameters(
-            command="uv",
-            args=["run", server],
-            cwd=str(_REPO_ROOT),
-        )
-    try:
-        rel = server.relative_to(_REPO_ROOT)
-        module = str(rel.with_suffix("")).replace("/", ".").replace("\\", ".")
-        return StdioServerParameters(
-            command="python",
-            args=["-m", module],
-            cwd=str(_REPO_ROOT),
-        )
-    except ValueError:
-        return StdioServerParameters(command="python", args=[str(server)])
-
-
 async def _list_tools(server_path: Path | str) -> list[dict]:
     """Connect to an MCP server via stdio and list its tools with parameter info."""
     from mcp import ClientSession
     from mcp.client.stdio import stdio_client
 
-    params = _make_stdio_params(server_path)
-    async with stdio_client(params) as (read, write):
-        async with ClientSession(read, write) as session:
-            await session.initialize()
-            result = await session.list_tools()
-            tools = []
-            for t in result.tools:
-                schema = t.inputSchema or {}
-                props = schema.get("properties", {})
-                required = set(schema.get("required", []))
-                parameters = [
-                    {
-                        "name": k,
-                        "type": v.get("type", "any"),
-                        "required": k in required,
-                    }
-                    for k, v in props.items()
-                ]
-                tools.append(
-                    {
-                        "name": t.name,
-                        "description": t.description or "",
-                        "parameters": parameters,
-                    }
-                )
-            return tools
+    params = make_stdio_params(server_path, repo_root=_REPO_ROOT)
+
+    async def _run() -> list[dict]:
+        async with stdio_client(params) as (read, write):
+            async with ClientSession(read, write) as session:
+                await session.initialize()
+                result = await session.list_tools()
+                tools = []
+                for t in result.tools:
+                    schema = t.inputSchema or {}
+                    props = schema.get("properties", {})
+                    required = set(schema.get("required", []))
+                    parameters = [
+                        {
+                            "name": k,
+                            "type": v.get("type", "any"),
+                            "required": k in required,
+                        }
+                        for k, v in props.items()
+                    ]
+                    tools.append(
+                        {
+                            "name": t.name,
+                            "description": t.description or "",
+                            "parameters": parameters,
+                        }
+                    )
+                return tools
+
+    # Use anyio.fail_after (not asyncio.wait_for): MCP stdio_client relies on
+    # anyio cancel scopes; asyncio cancelling the nested task breaks teardown
+    # with "Attempted to exit cancel scope in a different task".
+    try:
+        with anyio.fail_after(_MCP_CLIENT_TIMEOUT_SEC):
+            return await _run()
+    except TimeoutError as exc:
+        raise TimeoutError(
+            f"MCP list_tools exceeded {_MCP_CLIENT_TIMEOUT_SEC}s "
+            f"(server {server_path!r}); increase MCP_CLIENT_TIMEOUT_SEC or fix the server"
+        ) from exc
 
 
 async def _call_tool(server_path: Path | str, tool_name: str, args: dict) -> str:
@@ -325,12 +481,23 @@ async def _call_tool(server_path: Path | str, tool_name: str, args: dict) -> str
     from mcp import ClientSession
     from mcp.client.stdio import stdio_client
 
-    params = _make_stdio_params(server_path)
-    async with stdio_client(params) as (read, write):
-        async with ClientSession(read, write) as session:
-            await session.initialize()
-            result = await session.call_tool(tool_name, args)
-            return _extract_content(result.content)
+    params = make_stdio_params(server_path, repo_root=_REPO_ROOT)
+
+    async def _run() -> str:
+        async with stdio_client(params) as (read, write):
+            async with ClientSession(read, write) as session:
+                await session.initialize()
+                result = await session.call_tool(tool_name, args)
+                return _extract_content(result.content)
+
+    try:
+        with anyio.fail_after(_MCP_CLIENT_TIMEOUT_SEC):
+            return await _run()
+    except TimeoutError as exc:
+        raise TimeoutError(
+            f"MCP call_tool({tool_name!r}) exceeded {_MCP_CLIENT_TIMEOUT_SEC}s "
+            f"(server {server_path!r}); increase MCP_CLIENT_TIMEOUT_SEC or fix the server"
+        ) from exc
 
 
 def _extract_content(content: list[Any]) -> str:

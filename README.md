@@ -24,9 +24,56 @@
 - **Experiment-tracking dashboard:** [https://wandb.ai/kmn01-columbia-university/HPML%20Project/](https://wandb.ai/kmn01-columbia-university/HPML%20Project/)
 
 The final report PDF and the presentation file are checked into the `deliverables/` folder of this repository **and** uploaded to CourseWorks.
+# HPML Final Project: AssetOpsBench MCP Skills Server
+
+> **Course:** High Performance Machine Learning
+> **Semester:** Spring 2026
+> **Instructor:** Dr. Kaoutar El Maghraoui
 
 ---
 
+## Team Information
+
+- **Team Name:** Team 3
+- **Members:**
+  - Yeshitha Bhuvanesh (yb2649) — *Baseline RAG, Knowledge Plugin*
+  - Andrew Li (ayl2159) — *Benchmarking, dashboard visualizations, bug fixes*
+  - Trisha Maturi (tm3530) — *Skills MCP server architecture*
+  - Kirthana Natarajan (kmn2161) — *Observability infra, Baseline, Skills MCP Server*
+  - Thai On (tqo2101) — *Benchmarking and commands, dashboard refinements*
+
+## Submission
+
+- **GitHub repository:** [https://github.com/kmn01/AssetOpsBench/](https://github.com/kmn01/AssetOpsBench/)
+- **Final report:** [`deliverables/HPML_Final_Report.pdf`](deliverables/HPML_Final_Report.pdf)
+- **Final presentation:** [`deliverables/HPML_Final_Presentation.pptx`](deliverables/HPML_Final_Presentation.pptx)
+- **Experiment-tracking dashboard:** [https://wandb.ai/kmn01-columbia-university/HPML%20Project/](https://wandb.ai/kmn01-columbia-university/HPML%20Project/)
+
+The final report PDF and the presentation file are checked into the `deliverables/` folder of this repository **and** uploaded to CourseWorks.
+
+---
+
+## 1. Problem Statement
+
+This project extends AssetOpsBench, a framework for developing, orchestrating, and evaluating AI agents for industrial asset operations and maintenance. We focus on two inference-time workstreams: improving multi-tool orchestration through an MCP Skills Server, and benchmarking a domain-specific Knowledge Plugin against traditional ChromaDB/RAG-style retrieval.
+
+The system being optimized is an agentic inference pipeline where an LLM must discover available MCP tools, plan a workflow, call tools, retrieve relevant industrial documentation, and synthesize a grounded answer. The main bottlenecks we target are planning overhead, repeated low-level tool calls, context usage, retrieval grounding, citation quality, and end-to-end latency.
+
+---
+
+## 2. Model/Application Description
+
+Briefly describe the model(s) and stack you used:
+
+- **Model architecture:** LLM-backed plan-and-execute agent workflow using MCP tools. The default runner model in the repo is `watsonx/meta-llama/llama-4-maverick-17b-128e-instruct-fp8`; the runner also supports LiteLLM-backed models through `--model-id`. 17M parameters.
+- **Framework:** Python 3.12+, `uv`, Model Context Protocol / FastMCP, LiteLLM, IBM WatsonX, CouchDB, Pydantic, NumPy, Pandas, SciPy, ChromaDB, and sentence-transformers.
+- **Dataset:** AssetOpsBench industrial asset operations data and sample CouchDB databases. License: Apache license 2.0.
+- **Custom layers or modifications:** 
+  - Added and improved an MCP Skills Server that exposes reusable higher-level workflows such as `assetopsbench/pump_seal_inspection`.
+  - Added `SKILL.md`-based skill files and related skill-server improvements.
+  - Implemented / benchmarked a Knowledge Plugin using ChromaDB persistent indexing, local sentence-transformer embeddings, and citation-formatted retrieval results.
+  - Added benchmark tooling for skill/knowledge experiments, including latency, token/context, reliability, heuristic accuracy, and LLM-judge scoring.
+- **Hardware target:** IBM’s WatsonX LLM API through LiteLLM
 ## 1. Problem Statement
 
 This project extends AssetOpsBench, a framework for developing, orchestrating, and evaluating AI agents for industrial asset operations and maintenance. We focus on two inference-time workstreams: improving multi-tool orchestration through an MCP Skills Server, and benchmarking a domain-specific Knowledge Plugin against traditional ChromaDB/RAG-style retrieval.
@@ -291,6 +338,27 @@ The benchmark records include phase timing, per-step timing, token/context field
 The following sequence reproduces the headline number in Section 3 end-to-end (≈ XX minutes on [hardware]):
 
 ```bash
+# 1. Set up environment
+uv sync
+cp .env.public .env
+# Edit .env with the required model/provider credentials.
+
+# 2. Start CouchDB and seed local data
+docker compose -f src/couchdb/docker-compose.yaml up -d
+
+# 3. Run a baseline plan-execute workflow
+uv run plan-execute
+  --show-plan
+  --show-history
+  "Inspect pump seal condition for pump PUMP1 at site MAIN"
+
+# 4. Run the skill + knowledge benchmark suite
+uv run python benchmark/skill_knowledge/run_all_benchmarks.py
+  --model-id watsonx/ibm/granite-3-8b-instruct
+  --judge-model-id watsonx/ibm/granite-3-8b-instruct
+
+# 5. Compare plan length, tool-call count, latency, context usage,
+#    accuracy/judge score, and retrieval/citation quality in the JSONL outputs.
 # 1. Set up environment
 uv sync
 cp .env.public .env

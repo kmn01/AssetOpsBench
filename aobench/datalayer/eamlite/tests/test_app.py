@@ -1,8 +1,7 @@
-import os
 import sqlite3
 import unittest
 from datetime import datetime, timedelta, timezone
-from os import environ, getenv, remove
+from os import environ, remove
 from random import sample
 from string import ascii_letters
 
@@ -12,7 +11,6 @@ from sqlmodel import Session, SQLModel, create_engine
 
 
 class TestApp(unittest.TestCase):
-
     def setUp(self):
         """setUp Runs for each test
 
@@ -24,7 +22,7 @@ class TestApp(unittest.TestCase):
 
         try:
             self.old_url = environ[self.ENV_NAME]
-        except KeyError as e:
+        except KeyError:
             self.old_url = ""
 
         ""

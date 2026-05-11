@@ -1,0 +1,121 @@
+pack_id: assetopsbench
+skills:
+  - id: pump_seal_inspection
+    version: "1.0.0"
+    description: >
+      High-level workflow that gathers sensors for an asset, failure modes for the
+      asset class/name, and recent work orders for the same equipment id — useful
+      for pump seal and similar mechanical inspections without multiple planner steps.
+    required_servers: [iot, fmsr, wo]
+    asset_types: [centrifugal_pump, pump]
+    keywords: [pump, seal, inspection, mechanical seal, centrifugal]
+    default_enabled: true
+
+  - id: chiller_6_sensors
+    version: "1.0.0"
+    description: >
+      High-level workflow that confirms Chiller 6 exists at the MAIN site
+      and retrieves all sensors associated with the asset.
+    required_servers: [iot]
+    asset_types: [chiller]
+    keywords: [chiller, chiller 6, sensors, sensor inventory, main site]
+    default_enabled: true
+
+  - id: chiller_6_failure_modes
+    version: "1.0.0"
+    description: >
+      High-level workflow that confirms Chiller 6 exists at the MAIN site
+      and retrieves curated failure modes for the chiller.
+    required_servers: [iot, fmsr]
+    asset_types: [chiller]
+    keywords: [chiller, chiller 6, failure modes, faults, diagnostics, fmsr]
+    default_enabled: true
+
+  - id: iot_asset_inventory
+    version: "1.0.0"
+    description: >
+      Lists available IoT sites and assets for a specified site, with optional
+      asset-type or asset-id filtering handled in the final answer.
+    required_servers: [iot]
+    asset_types: [site, chiller, ahu, equipment]
+    keywords: [iot, site, assets, inventory, metadata, asset details]
+    default_enabled: true
+
+  - id: iot_sensor_inventory_for_asset
+    version: "1.0.0"
+    description: >
+      Retrieves the monitored sensors or metrics for one explicit asset at one
+      explicit IoT site.
+    required_servers: [iot]
+    asset_types: [chiller, ahu, equipment, wind_turbine]
+    keywords: [iot, sensors, metrics, monitored, installed sensors]
+    default_enabled: true
+
+  - id: fmsr_failure_modes_for_asset
+    version: "1.0.0"
+    description: >
+      Retrieves known failure modes for one explicit asset type or asset name.
+    required_servers: [fmsr]
+    asset_types: [chiller, ahu, wind_turbine, equipment]
+    keywords: [failure modes, faults, fmsr, diagnostics]
+    default_enabled: true
+
+  - id: fmsr_sensor_failure_mapping
+    version: "1.0.0"
+    description: >
+      Retrieves sensors and failure modes for one explicit asset and maps which
+      sensors can monitor or detect those failures.
+    required_servers: [iot, fmsr]
+    asset_types: [chiller, ahu, equipment]
+    keywords: [failure mode, sensor mapping, detect, monitor, temporal behavior]
+    default_enabled: true
+
+  - id: iot_sensor_data_window
+    version: "1.0.0"
+    description: >
+      Retrieves historical IoT observations for one explicit asset over an
+      explicit time point or time window.
+    required_servers: [iot]
+    asset_types: [chiller, ahu, equipment]
+    keywords: [iot, history, sensor data, time window, measurements]
+    default_enabled: true
+
+  - id: tsfm_forecast_sensor
+    version: "1.0.0"
+    description: >
+      Runs TSFM forecasting on a provided time-series dataset for explicit
+      target columns.
+    required_servers: [tsfm]
+    asset_types: [chiller, equipment, time_series]
+    keywords: [tsfm, forecast, forecasting, ttm, time series]
+    default_enabled: true
+
+  - id: tsfm_anomaly_detect_sensor
+    version: "1.0.0"
+    description: >
+      Runs integrated TSFM anomaly detection on a provided time-series dataset
+      for explicit target columns.
+    required_servers: [tsfm]
+    asset_types: [chiller, equipment, time_series]
+    keywords: [tsfm, anomaly detection, tsad, anomalies, time series]
+    default_enabled: true
+
+  - id: multiagent_iot_to_tsfm_forecast
+    version: "1.0.0"
+    description: >
+      Retrieves IoT history for one explicit asset and then runs TSFM forecasting
+      on the provided or generated dataset path.
+    required_servers: [iot, tsfm]
+    asset_types: [chiller, equipment, time_series]
+    keywords: [iot, tsfm, forecast, multiagent, chiller]
+    default_enabled: true
+
+  - id: multiagent_iot_to_tsfm_anomaly
+    version: "1.0.0"
+    description: >
+      Retrieves IoT history for one explicit asset and then runs integrated TSFM
+      anomaly detection on the provided or generated dataset path.
+    required_servers: [iot, tsfm]
+    asset_types: [chiller, equipment, time_series]
+    keywords: [iot, tsfm, anomaly, tsad, multiagent, chiller]
+    default_enabled: true

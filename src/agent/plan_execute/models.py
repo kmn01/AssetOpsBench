@@ -61,6 +61,10 @@ class StepResult:
     error: Optional[str] = None
     tool: str = ""
     tool_args: dict = field(default_factory=dict)
+    arg_resolution_ms: Optional[float] = None
+    mcp_call_ms: Optional[float] = None
+    arg_prompt_tokens: Optional[int] = None
+    arg_completion_tokens: Optional[int] = None
 
     @property
     def success(self) -> bool:
